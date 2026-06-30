@@ -10,6 +10,13 @@ import urllib.error
 import urllib.request
 from datetime import UTC, datetime
 
+# Dev tool: bypass system proxy (SOCKS/HTTP) so localhost ingest stays reachable.
+_HTTP_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
+def _urlopen(request: urllib.request.Request, timeout: int = 10):
+    return _HTTP_OPENER.open(request, timeout=timeout)
+
 
 class CurrentGenerator:
     """Base load + noise with occasional idle (zero-current) periods."""
@@ -52,7 +59,7 @@ def send_reading(url: str, token: str, current_a: float, max_retries: int = 5) -
 
     for attempt in range(1, max_retries + 1):
         try:
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with _urlopen(request, timeout=10) as response:
                 body = response.read().decode("utf-8")
                 print(f"[{datetime.now(UTC).isoformat()}] {response.status} {body}")
                 return True

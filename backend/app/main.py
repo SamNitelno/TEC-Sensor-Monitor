@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.session import async_session_factory
-from app.routers import ingest
+from app.routers import ingest, sensors
 from app.services.admin_bootstrap import ensure_admin_user
 
 
@@ -21,7 +22,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(ingest.router, prefix="/api/v1")
+app.include_router(sensors.router, prefix="/api/v1")
 
 
 @app.get("/health")

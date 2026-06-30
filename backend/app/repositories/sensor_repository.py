@@ -6,6 +6,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.sensor import Sensor, SensorStatus
 
 
+async def list_all(session: AsyncSession) -> list[Sensor]:
+    result = await session.execute(select(Sensor).order_by(Sensor.id))
+    return list(result.scalars().all())
+
+
+async def get_by_id(session: AsyncSession, sensor_id: int) -> Sensor | None:
+    result = await session.execute(select(Sensor).where(Sensor.id == sensor_id))
+    return result.scalar_one_or_none()
+
+
 async def get_by_api_token(session: AsyncSession, api_token: str) -> Sensor | None:
     result = await session.execute(select(Sensor).where(Sensor.api_token == api_token))
     return result.scalar_one_or_none()

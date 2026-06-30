@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:tek_sensor_monitor/core/router.dart';
 import 'package:tek_sensor_monitor/core/theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ru');
   runApp(
     const ProviderScope(
       child: TekSensorMonitorApp(),
