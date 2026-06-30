@@ -1,0 +1,11 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+venv/
+.dart_tool/
+frontend/build/
+*.iml
+.idea/
+CONTEXT.md
+.cursor/

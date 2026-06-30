@@ -1,0 +1,31 @@
+{
+  "info": {
+    "name": "tek_sensor_monitor",
+    "displayName": "ТЭК Мониторинг",
+    "version": "0.1.0",
+    "description": "TEC sensor downtime monitoring"
+  },
+  "platforms": {
+    "android": {
+      "default": {
+        "project": {
+          "name": "tek_sensor_monitor"
+        }
+      }
+    },
+    "ios": {
+      "default": {
+        "project": {
+          "name": "tek_sensor_monitor"
+        }
+      }
+    },
+    "web": {
+      "default": {
+        "project": {
+          "name": "tek_sensor_monitor"
+        }
+      }
+    }
+  }
+}
