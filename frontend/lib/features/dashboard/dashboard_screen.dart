@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/current_chart.dart';
-import 'package:tek_sensor_monitor/models/sensor.dart';
+import 'package:tek_sensor_monitor/features/dashboard/widgets/group_filter_panel.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -35,7 +35,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final sensorsAsync = ref.watch(sensorsProvider);
-    final selectedId = ref.watch(selectedSensorIdProvider);
+    final sitesAsync = ref.watch(sitesProvider);
+    final workshopsAsync = ref.watch(workshopsProvider);
+    final selectedIds = ref.watch(selectedSensorIdsProvider);
+    final siteId = ref.watch(siteFilterProvider);
+    final workshopId = ref.watch(workshopFilterProvider);
     final preset = ref.watch(timeRangePresetProvider);
     final customRange = ref.watch(customTimeRangeProvider);
     final scale = ref.watch(chartScaleProvider);
@@ -43,118 +47,139 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     ref.listen(sensorsProvider, (previous, next) {
       next.whenData((sensors) {
-        if (sensors.isNotEmpty && ref.read(selectedSensorIdProvider) == null) {
-          ref.read(selectedSensorIdProvider.notifier).state = sensors.first.id;
+        if (sensors.isNotEmpty && ref.read(selectedSensorIdsProvider).isEmpty) {
+          ref.read(selectedSensorIdsProvider.notifier).state = {sensors.first.id};
         }
       });
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('ТЭК · Мониторинг датчиков'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _SensorSelector(
-              sensorsAsync: sensorsAsync,
-              selectedId: selectedId,
-              onChanged: (id) =>
-                  ref.read(selectedSensorIdProvider.notifier).state = id,
-            ),
-            const SizedBox(height: 12),
-            _RangePresetBar(
-              selected: preset,
-              hasCustom: customRange != null,
-              onPreset: (value) {
-                ref.read(customTimeRangeProvider.notifier).state = null;
-                ref.read(timeRangePresetProvider.notifier).state = value;
-              },
-              onCustom: () => _pickCustomRange(context),
-            ),
-            const SizedBox(height: 12),
-            _ScaleBar(
-              selected: scale,
-              onChanged: (value) =>
-                  ref.read(chartScaleProvider.notifier).state = value,
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: readingsAsync.when(
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (error, _) => _MessagePanel(
-                      icon: Icons.error_outline,
-                      title: 'Не удалось загрузить данные',
-                      subtitle: error.toString(),
-                      color: theme.colorScheme.error,
-                    ),
-                    data: (response) {
-                      if (response.points.isEmpty) {
-                        return _MessagePanel(
-                          icon: Icons.show_chart,
-                          title: 'Нет данных за выбранный период',
-                          subtitle:
-                              'Проверьте, что датчик отправляет телеметрию, и расширьте диапазон.',
-                          color: theme.colorScheme.secondary,
-                        );
-                      }
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Ток фазы · ${response.points.length} точек · bucket: ${response.bucket}',
-                            style: theme.textTheme.labelLarge,
-                          ),
-                          const SizedBox(height: 8),
-                          Expanded(
-                            child: CurrentChart(
-                              points: response.points,
-                              scale: scale,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GroupFilterPanel(
+            sitesAsync: sitesAsync,
+            workshopsAsync: workshopsAsync,
+            sensorsAsync: sensorsAsync,
+            selectedSensorIds: selectedIds,
+            selectedSiteId: siteId,
+            selectedWorkshopId: workshopId,
+            onSiteChanged: (siteId) {
+              ref.read(siteFilterProvider.notifier).state = siteId;
+              ref.read(workshopFilterProvider.notifier).state = null;
+              ref.read(selectedSensorIdsProvider.notifier).state = {};
+            },
+            onWorkshopChanged: (workshopId) {
+              ref.read(workshopFilterProvider.notifier).state = workshopId;
+              ref.read(selectedSensorIdsProvider.notifier).state = {};
+            },
+            onSensorToggle: (sensorId, selected) {
+              final current = {...ref.read(selectedSensorIdsProvider)};
+              if (selected) {
+                current.add(sensorId);
+              } else {
+                current.remove(sensorId);
+              }
+              ref.read(selectedSensorIdsProvider.notifier).state = current;
+            },
+          ),
+          const SizedBox(height: 12),
+          _RangePresetBar(
+            selected: preset,
+            hasCustom: customRange != null,
+            onPreset: (value) {
+              ref.read(customTimeRangeProvider.notifier).state = null;
+              ref.read(timeRangePresetProvider.notifier).state = value;
+            },
+            onCustom: () => _pickCustomRange(context),
+          ),
+          const SizedBox(height: 12),
+          _ScaleBar(
+            selected: scale,
+            onChanged: (value) =>
+                ref.read(chartScaleProvider.notifier).state = value,
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: readingsAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => _MessagePanel(
+                    icon: Icons.error_outline,
+                    title: 'Не удалось загрузить данные',
+                    subtitle: error.toString(),
+                    color: theme.colorScheme.error,
                   ),
+                  data: (response) {
+                    final chartSeries = response.series
+                        .where((s) => s.points.isNotEmpty)
+                        .toList();
+                    if (chartSeries.isEmpty) {
+                      return _MessagePanel(
+                        icon: Icons.show_chart,
+                        title: 'Нет данных за выбранный период',
+                        subtitle:
+                            'Выберите датчик или группу и убедитесь, что телеметрия поступает.',
+                        color: theme.colorScheme.secondary,
+                      );
+                    }
+                    final pointsCount =
+                        chartSeries.fold<int>(0, (sum, s) => sum + s.points.length);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ток фазы · $pointsCount точек · ${chartSeries.length} ряд(ов)',
+                          style: theme.textTheme.labelLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: CurrentChart(
+                            series: [
+                              for (var i = 0; i < chartSeries.length; i++)
+                                ChartSeriesData(
+                                  sensorId: chartSeries[i].sensorId,
+                                  sensorName: chartSeries[i].sensorName,
+                                  points: chartSeries[i].points,
+                                  color: CurrentChart.colorForIndex(i),
+                                ),
+                            ],
+                            scale: scale,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Future<void> _pickCustomRange(BuildContext context) async {
     final now = DateTime.now();
+    final custom = ref.read(customTimeRangeProvider);
     final picked = await showDateRangePicker(
       context: context,
       firstDate: now.subtract(const Duration(days: 365 * 3)),
       lastDate: now,
-      initialDateRange: () {
-        final custom = ref.read(customTimeRangeProvider);
-        if (custom != null) {
-          return DateTimeRange(start: custom.start, end: custom.end);
-        }
-        return DateTimeRange(
-          start: now.subtract(const Duration(days: 1)),
-          end: now,
-        );
-      }(),
+      initialDateRange: custom != null
+          ? DateTimeRange(start: custom.start, end: custom.end)
+          : DateTimeRange(
+              start: now.subtract(const Duration(days: 1)),
+              end: now,
+            ),
       helpText: 'Произвольный диапазон',
     );
     if (picked != null) {
       ref.read(customTimeRangeProvider.notifier).state = TimeRange(
-        start: DateTime(
-          picked.start.year,
-          picked.start.month,
-          picked.start.day,
-        ),
+        start: DateTime(picked.start.year, picked.start.month, picked.start.day),
         end: DateTime(
           picked.end.year,
           picked.end.month,
@@ -165,80 +190,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
       );
     }
-  }
-}
-
-class _SensorSelector extends StatelessWidget {
-  const _SensorSelector({
-    required this.sensorsAsync,
-    required this.selectedId,
-    required this.onChanged,
-  });
-
-  final AsyncValue<List<Sensor>> sensorsAsync;
-  final int? selectedId;
-  final ValueChanged<int?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return sensorsAsync.when(
-      loading: () => const LinearProgressIndicator(),
-      error: (error, _) => Text('Ошибка загрузки датчиков: $error'),
-      data: (sensors) {
-        if (sensors.isEmpty) {
-          return const Text('Датчики не найдены. Запустите seed_test_sensor.py.');
-        }
-        return DropdownButtonFormField<int>(
-          value: selectedId,
-          decoration: const InputDecoration(
-            labelText: 'Датчик',
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          items: sensors
-              .map(
-                (sensor) => DropdownMenuItem(
-                  value: sensor.id,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _StatusDot(online: sensor.isOnline),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          sensor.name,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: onChanged,
-        );
-      },
-    );
-  }
-}
-
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.online});
-
-  final bool online;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: online
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
-      ),
-    );
   }
 }
 
@@ -260,7 +211,6 @@ class _RangePresetBar extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         for (final preset in TimeRangePreset.values)
           ChoiceChip(
@@ -328,17 +278,9 @@ class _MessagePanel extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: color),
             const SizedBox(height: 16),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineMedium,
-              textAlign: TextAlign.center,
-            ),
+            Text(title, style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
+            Text(subtitle, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
           ],
         ),
       ),

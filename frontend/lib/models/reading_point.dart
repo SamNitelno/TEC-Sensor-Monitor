@@ -40,3 +40,44 @@ class ReadingsResponse {
   final String bucket;
   final List<ReadingPoint> points;
 }
+
+class SensorSeries {
+  const SensorSeries({
+    required this.sensorId,
+    required this.sensorName,
+    required this.bucket,
+    required this.points,
+  });
+
+  factory SensorSeries.fromJson(Map<String, dynamic> json) {
+    final pointsJson = json['points'] as List<dynamic>? ?? [];
+    return SensorSeries(
+      sensorId: json['sensor_id'] as int,
+      sensorName: json['sensor_name'] as String,
+      bucket: json['bucket'] as String,
+      points: pointsJson
+          .map((item) => ReadingPoint.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  final int sensorId;
+  final String sensorName;
+  final String bucket;
+  final List<ReadingPoint> points;
+}
+
+class GroupedReadingsResponse {
+  const GroupedReadingsResponse({required this.series});
+
+  factory GroupedReadingsResponse.fromJson(Map<String, dynamic> json) {
+    final seriesJson = json['series'] as List<dynamic>? ?? [];
+    return GroupedReadingsResponse(
+      series: seriesJson
+          .map((item) => SensorSeries.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  final List<SensorSeries> series;
+}

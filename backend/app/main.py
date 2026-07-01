@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.session import async_session_factory
-from app.routers import ingest, sensors
+from app.routers import auth, ingest, readings, sensors, sites, workshops
 from app.services.admin_bootstrap import ensure_admin_user
 
 
@@ -30,8 +30,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(ingest.router, prefix="/api/v1")
 app.include_router(sensors.router, prefix="/api/v1")
+app.include_router(readings.router, prefix="/api/v1")
+app.include_router(sites.router, prefix="/api/v1")
+app.include_router(workshops.router, prefix="/api/v1")
 
 
 @app.get("/health")

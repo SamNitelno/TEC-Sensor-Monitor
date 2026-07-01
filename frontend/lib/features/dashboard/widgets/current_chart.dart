@@ -4,24 +4,50 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
 import 'package:tek_sensor_monitor/models/reading_point.dart';
 
+class ChartSeriesData {
+  const ChartSeriesData({
+    required this.sensorId,
+    required this.sensorName,
+    required this.points,
+    required this.color,
+  });
+
+  final int sensorId;
+  final String sensorName;
+  final List<ReadingPoint> points;
+  final Color color;
+}
+
 class CurrentChart extends StatelessWidget {
   const CurrentChart({
     super.key,
-    required this.points,
+    required this.series,
     required this.scale,
   });
 
-  final List<ReadingPoint> points;
+  final List<ChartSeriesData> series;
   final ChartScale scale;
+
+  static const _palette = [
+    Color(0xFF00D4AA),
+    Color(0xFFF5A623),
+    Color(0xFF58A6FF),
+    Color(0xFFE06C75),
+    Color(0xFFD2A8FF),
+    Color(0xFF79C0FF),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
 
     return SfCartesianChart(
       plotAreaBorderWidth: 0,
       margin: const EdgeInsets.only(top: 8, right: 12, bottom: 4, left: 4),
+      legend: Legend(
+        isVisible: series.length > 1,
+        textStyle: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 11),
+      ),
       zoomPanBehavior: ZoomPanBehavior(
         enablePinching: true,
         enablePanning: true,
@@ -49,29 +75,29 @@ class CurrentChart extends StatelessWidget {
         labelStyle: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 11),
         decimalPlaces: 2,
       ),
-      tooltipBehavior: TooltipBehavior(
-        enable: true,
-        format: 'point.x : point.y А',
-      ),
-      series: <CartesianSeries<ReadingPoint, DateTime>>[
-        RangeAreaSeries<ReadingPoint, DateTime>(
-          dataSource: points,
-          xValueMapper: (point, _) => point.time,
-          highValueMapper: (point, _) => point.max,
-          lowValueMapper: (point, _) => point.min,
-          color: primary.withValues(alpha: 0.18),
-          borderColor: primary.withValues(alpha: 0.35),
-          borderWidth: 1,
-          name: 'min–max',
-        ),
-        FastLineSeries<ReadingPoint, DateTime>(
-          dataSource: points,
-          xValueMapper: (point, _) => point.time,
-          yValueMapper: (point, _) => point.avg,
-          color: primary,
-          width: 2,
-          name: 'среднее',
-        ),
+      tooltipBehavior: TooltipBehavior(enable: true),
+      series: [
+        for (final item in series) ...[
+          if (series.length == 1)
+            RangeAreaSeries<ReadingPoint, DateTime>(
+              dataSource: item.points,
+              xValueMapper: (point, _) => point.time,
+              highValueMapper: (point, _) => point.max,
+              lowValueMapper: (point, _) => point.min,
+              color: item.color.withValues(alpha: 0.18),
+              borderColor: item.color.withValues(alpha: 0.35),
+              borderWidth: 1,
+              name: 'min–max',
+            ),
+          FastLineSeries<ReadingPoint, DateTime>(
+            dataSource: item.points,
+            xValueMapper: (point, _) => point.time,
+            yValueMapper: (point, _) => point.avg,
+            color: item.color,
+            width: 2,
+            name: item.sensorName,
+          ),
+        ],
       ],
     );
   }
@@ -99,4 +125,6 @@ class CurrentChart extends StatelessWidget {
       ChartScale.years => DateTimeIntervalType.years,
     };
   }
+
+  static Color colorForIndex(int index) => _palette[index % _palette.length];
 }

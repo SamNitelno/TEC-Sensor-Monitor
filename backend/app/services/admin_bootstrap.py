@@ -7,16 +7,25 @@ from app.models.user import User, UserRole
 
 
 async def ensure_admin_user(session: AsyncSession) -> None:
-    """Create admin user from env if it does not exist (idempotent)."""
+    """Create admin and viewer users from env if they do not exist (idempotent)."""
     result = await session.execute(select(User).where(User.login == settings.admin_login))
-    existing = result.scalar_one_or_none()
-    if existing is not None:
-        return
+    if result.scalar_one_or_none() is None:
+        session.add(
+            User(
+                login=settings.admin_login,
+                password_hash=hash_password(settings.admin_password),
+                role=UserRole.admin,
+            )
+        )
 
-    admin = User(
-        login=settings.admin_login,
-        password_hash=hash_password(settings.admin_password),
-        role=UserRole.admin,
-    )
-    session.add(admin)
+    result = await session.execute(select(User).where(User.login == settings.viewer_login))
+    if result.scalar_one_or_none() is None:
+        session.add(
+            User(
+                login=settings.viewer_login,
+                password_hash=hash_password(settings.viewer_password),
+                role=UserRole.viewer,
+            )
+        )
+
     await session.commit()
