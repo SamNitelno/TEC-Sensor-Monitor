@@ -35,17 +35,21 @@ def build_integration_snippet(api_token: str) -> IntegrationSnippet:
         "Content-Type": "application/json",
         "X-Device-Token": api_token,
     }
-    body_example = {"current_a": 4.25}
+    body_example = {"current_a": 4.25, "power_w": 980.0}
     curl = (
         f'curl -X POST "{url}" \\\n'
         f'  -H "Content-Type: application/json" \\\n'
         f'  -H "X-Device-Token: {api_token}" \\\n'
-        f"  -d '{{\"current_a\": 4.25}}'"
+        f"  -d '{{\"current_a\": 4.25, \"power_w\": 980.0}}'"
     )
     return IntegrationSnippet(
         url=url,
         headers=headers,
-        body_schema={"current_a": "float (required)", "ts": "ISO8601 string (optional)"},
+        body_schema={
+            "current_a": "float A RMS (required)",
+            "power_w": "float W (optional)",
+            "ts": "ISO8601 string (optional)",
+        },
         body_example=body_example,
         curl=curl,
     )

@@ -98,17 +98,21 @@ flutter run --dart-define=API_BASE_URL=http://<LAN-IP-ПК>:8000
 python tools/esp_simulator.py --token <api_token> --url http://localhost:8000/api/v1/ingest
 ```
 
-## Прошивка ESP32 (PlatformIO)
+## Прошивка ESP32 (PlatformIO, JSY-MK-194G)
+
+Разводка UART: **RX=GPIO33**, **TX=GPIO32**, 8N1, Modbus-RTU (по умолчанию 4800 baud, адрес 1).
 
 ```powershell
 cd firmware
-pio run                  # сборка с FakeCurrentSensor (по умолчанию)
-pio run -t upload        # прошивка
-pio device monitor       # лог
+pio run -e esp32dev              # без модуля JSY (FakeCurrentSensor)
+pio run -e esp32dev_jsy          # реальный JSY через MycilaJSY (рекомендуется)
+pio run -e esp32dev_jsy_raw      # сырой Modbus без библиотеки
+pio run -e esp32dev_jsy -t upload
+pio device monitor
 ```
 
-Окружения в `platformio.ini`:
-- `esp32dev` — заглушка `FakeCurrentSensor` (компилируется без железа)
-- `esp32dev_ina219` — для реального INA219 (когда подключён)
+Параметры в [`firmware/src/hardware_config.h`](firmware/src/hardware_config.h): пины UART, baud, адрес Modbus, `CURRENT_SCALE` (поправка при CT 150A).
 
-После первой привязки по BLE конфиг хранится в NVS; при следующем включении ESP подключается к Wi-Fi и шлёт телеметрию автоматически.
+**Первичная прошивка** — USB-C (`pio run -t upload`). **BLE** — только для передачи Wi-Fi и токена после прошивки (приложение → Датчики → BLE).
+
+При первом запуске сверьте ток с эталонной нагрузкой (~2 кВт ≈ 9 А при 230 В). При постоянном расхождении задайте `CURRENT_SCALE` в `platformio.ini` (см. комментарий `esp32dev_jsy_scaled`).

@@ -6,6 +6,7 @@ from pydantic import BaseModel, BeforeValidator, Field
 
 class ReadingIn(BaseModel):
     current_a: float
+    power_w: float | None = None
     ts: datetime | None = None
 
 

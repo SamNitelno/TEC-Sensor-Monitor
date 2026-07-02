@@ -16,5 +16,6 @@ class Reading(Base):
     time: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
     sensor_id: Mapped[int] = mapped_column(ForeignKey("sensors.id"), primary_key=True)
     current_a: Mapped[float] = mapped_column(Float, nullable=False)
+    power_w: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     sensor: Mapped["Sensor"] = relationship(back_populates="readings")

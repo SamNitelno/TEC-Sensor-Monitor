@@ -38,7 +38,7 @@ async def fetch_readings(
     if bucket == BucketParam.raw:
         rows = await driver.fetch(
             """
-            SELECT time, current_a AS avg, current_a AS min, current_a AS max
+            SELECT time, current_a AS avg, current_a AS min, current_a AS max, power_w
             FROM readings
             WHERE sensor_id = $1 AND time >= $2 AND time <= $3
             ORDER BY time ASC
@@ -74,6 +74,11 @@ async def fetch_readings(
             avg=float(row["avg"]),
             min=float(row["min"]),
             max=float(row["max"]),
+            power_w=(
+                float(row["power_w"])
+                if bucket == BucketParam.raw and row.get("power_w") is not None
+                else None
+            ),
         )
         for row in rows
     ]

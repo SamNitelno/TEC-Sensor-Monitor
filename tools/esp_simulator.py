@@ -40,12 +40,22 @@ class CurrentGenerator:
         noise = random.gauss(0, 0.15)
         return max(0.0, self._base_load + noise)
 
+    def next_power(self, current_a: float) -> float:
+        """Plausible active power for ~230 V AC (non-zero load)."""
+        if current_a <= 0.05:
+            return 0.0
+        voltage = random.uniform(225.0, 235.0)
+        pf = random.uniform(0.92, 0.99)
+        return max(0.0, voltage * current_a * pf)
 
-def send_reading(url: str, token: str, current_a: float, max_retries: int = 5) -> bool:
-    payload = {
+
+def send_reading(url: str, token: str, current_a: float, power_w: float | None = None, max_retries: int = 5) -> bool:
+    payload: dict[str, object] = {
         "current_a": round(current_a, 3),
         "ts": datetime.now(UTC).isoformat(),
     }
+    if power_w is not None:
+        payload["power_w"] = round(power_w, 1)
     data = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
         url,
@@ -102,7 +112,8 @@ def main() -> None:
 
     while True:
         current = generator.next_current()
-        ok = send_reading(args.url, args.token, current)
+        power = generator.next_power(current)
+        ok = send_reading(args.url, args.token, current, power)
         if not ok:
             print("Stopping: unrecoverable error or invalid token.", file=sys.stderr)
             sys.exit(1)

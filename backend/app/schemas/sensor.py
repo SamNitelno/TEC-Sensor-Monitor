@@ -66,6 +66,7 @@ class ReadingPoint(BaseModel):
     avg: float
     min: float
     max: float
+    power_w: float | None = None
 
 
 class ReadingsResponse(BaseModel):

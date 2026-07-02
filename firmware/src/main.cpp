@@ -29,6 +29,9 @@ void setup() {
   Serial.begin(115200);
   delay(500);
   g_sensor = createCurrentSensor();
+  if (!g_sensor->begin()) {
+    Serial.println("Warning: sensor not ready at boot");
+  }
 
   DeviceConfig config;
   if (loadConfigFromNvs(config) && connectWifi(config)) {

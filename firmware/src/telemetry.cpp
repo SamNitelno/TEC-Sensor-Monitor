@@ -17,7 +17,7 @@ String iso8601UtcNow() {
   return String(buffer) + "Z";
 }
 
-bool sendReading(const DeviceConfig& config, float currentA) {
+bool sendReading(const DeviceConfig& config, float currentA, float powerW, bool sensorOk) {
   if (WiFi.status() != WL_CONNECTED) {
     return false;
   }
@@ -33,6 +33,9 @@ bool sendReading(const DeviceConfig& config, float currentA) {
 
   JsonDocument doc;
   doc["current_a"] = currentA;
+  if (sensorOk) {
+    doc["power_w"] = powerW;
+  }
   const String ts = iso8601UtcNow();
   if (ts.length() > 0) {
     doc["ts"] = ts;
@@ -51,6 +54,10 @@ bool sendReading(const DeviceConfig& config, float currentA) {
 void runTelemetryLoop(const DeviceConfig& config, CurrentSensor& sensor) {
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
 
+  if (!sensor.begin()) {
+    Serial.println("Sensor init failed — will retry in loop");
+  }
+
   uint32_t lastSend = 0;
   while (true) {
     if (WiFi.status() != WL_CONNECTED) {
@@ -62,8 +69,9 @@ void runTelemetryLoop(const DeviceConfig& config, CurrentSensor& sensor) {
     const uint32_t now = millis();
     if (now - lastSend >= kTelemetryIntervalMs) {
       lastSend = now;
-      const float current = sensor.readCurrentAmps();
-      sendReading(config, current);
+      const float current = sensor.readCurrentA();
+      const float power = sensor.readPowerW();
+      sendReading(config, current, power, sensor.ok());
     }
     delay(50);
   }

@@ -59,6 +59,56 @@ async def test_ingest_valid_token_writes_and_updates_sensor(
 
 
 @pytest.mark.asyncio
+async def test_ingest_with_power_w_persisted(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    test_sensor_token: tuple[int, str],
+) -> None:
+    sensor_id, token = test_sensor_token
+    response = await client.post(
+        "/api/v1/ingest",
+        headers={"X-Device-Token": token},
+        json={"current_a": 9.1, "power_w": 2100.0},
+    )
+    assert response.status_code == 202
+
+    row = await db_session.execute(
+        select(Reading)
+        .where(Reading.sensor_id == sensor_id)
+        .order_by(Reading.time.desc())
+        .limit(1)
+    )
+    reading = row.scalar_one()
+    assert reading.current_a == pytest.approx(9.1)
+    assert reading.power_w == pytest.approx(2100.0)
+
+
+@pytest.mark.asyncio
+async def test_ingest_without_power_w_still_works(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    test_sensor_token: tuple[int, str],
+) -> None:
+    sensor_id, token = test_sensor_token
+    response = await client.post(
+        "/api/v1/ingest",
+        headers={"X-Device-Token": token},
+        json={"current_a": 1.5},
+    )
+    assert response.status_code == 202
+
+    row = await db_session.execute(
+        select(Reading)
+        .where(Reading.sensor_id == sensor_id)
+        .order_by(Reading.time.desc())
+        .limit(1)
+    )
+    reading = row.scalar_one()
+    assert reading.current_a == pytest.approx(1.5)
+    assert reading.power_w is None
+
+
+@pytest.mark.asyncio
 async def test_ingest_accepts_batch(
     client: AsyncClient,
     test_sensor_token: tuple[int, str],

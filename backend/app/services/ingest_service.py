@@ -33,7 +33,7 @@ async def ingest_readings(
 
     timestamps = _resolve_timestamps(readings)
     rows = [
-        (timestamps[index], sensor.id, reading.current_a)
+        (timestamps[index], sensor.id, reading.current_a, reading.power_w)
         for index, reading in enumerate(readings)
     ]
 
