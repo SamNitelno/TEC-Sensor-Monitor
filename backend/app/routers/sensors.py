@@ -19,18 +19,20 @@ from app.schemas.sensor import (
     SensorListItem,
     SensorUpdate,
 )
+from app.services.sensor_status import effective_status
 from app.services import readings_service, sensor_service
 
 router = APIRouter(prefix="/sensors", tags=["sensors"])
 
 
 def _to_list_item(sensor) -> SensorListItem:
+    status = effective_status(sensor)
     return SensorListItem(
         id=sensor.id,
         name=sensor.name,
         device_id=sensor.device_id,
-        workshop_id=sensor.workshop_id,
-        status=sensor.status,
+        site_id=sensor.site_id,
+        status=status,
         last_seen=sensor.last_seen,
     )
 

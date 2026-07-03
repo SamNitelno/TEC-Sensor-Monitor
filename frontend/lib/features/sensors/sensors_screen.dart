@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/core/app_shell.dart';
+import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
+import 'package:tek_sensor_monitor/features/groups/groups_screen.dart';
 import 'package:tek_sensor_monitor/features/provisioning/ble_platform.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
-
 import 'package:tek_sensor_monitor/models/site.dart';
 
 class SensorsScreen extends ConsumerWidget {
@@ -15,11 +16,11 @@ class SensorsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sensorsAsync = ref.watch(sensorsProvider);
-    final workshopsAsync = ref.watch(workshopsProvider);
+    final sitesAsync = ref.watch(allSitesProvider);
 
     return sensorsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Ошибка: $e')),
+      error: (e, _) => Center(child: Text(friendlyApiError(e))),
       data: (sensors) => Scaffold(
         body: ListView.separated(
           padding: const EdgeInsets.all(16),
@@ -29,6 +30,11 @@ class SensorsScreen extends ConsumerWidget {
             final sensor = sensors[index];
             return Card(
               child: ListTile(
+                leading: Icon(
+                  Icons.circle,
+                  size: 12,
+                  color: sensor.isOnline ? Colors.green : Colors.grey,
+                ),
                 title: Text(sensor.name),
                 subtitle: Text(
                   '${sensor.deviceId} · ${sensor.isOnline ? "online" : "offline"}',
@@ -36,7 +42,12 @@ class SensorsScreen extends ConsumerWidget {
                 trailing: PopupMenuButton<String>(
                   onSelected: (action) async {
                     if (action == 'edit') {
-                      await _editSensor(context, ref, sensor, workshopsAsync.valueOrNull ?? []);
+                      await _editSensor(
+                        context,
+                        ref,
+                        sensor,
+                        sitesAsync.valueOrNull ?? [],
+                      );
                     } else if (action == 'delete') {
                       await _deleteSensor(context, ref, sensor);
                     }
@@ -66,7 +77,8 @@ class SensorsScreen extends ConsumerWidget {
               ),
             FloatingActionButton.extended(
               heroTag: 'add',
-              onPressed: () => _createSensor(context, ref, workshopsAsync.valueOrNull ?? []),
+              onPressed: () =>
+                  _createSensor(context, ref, sitesAsync.valueOrNull ?? []),
               icon: const Icon(Icons.add),
               label: const Text('Датчик'),
             ),
@@ -79,11 +91,11 @@ class SensorsScreen extends ConsumerWidget {
   Future<void> _createSensor(
     BuildContext context,
     WidgetRef ref,
-    List<Workshop> workshops,
+    List<Site> sites,
   ) async {
     final nameController = TextEditingController();
     final deviceIdController = TextEditingController();
-    int? workshopId;
+    int? siteId;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -100,23 +112,29 @@ class SensorsScreen extends ConsumerWidget {
               controller: deviceIdController,
               decoration: const InputDecoration(labelText: 'Device ID'),
             ),
-            if (workshops.isNotEmpty)
+            if (sites.isNotEmpty)
               DropdownButtonFormField<int?>(
-                value: workshopId,
-                decoration: const InputDecoration(labelText: 'Цех'),
+                value: siteId,
+                decoration: const InputDecoration(labelText: 'Площадка'),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('Без цеха')),
-                  ...workshops.map(
-                    (w) => DropdownMenuItem(value: w.id, child: Text(w.name)),
+                  const DropdownMenuItem(value: null, child: Text('Без площадки')),
+                  ...sites.map(
+                    (s) => DropdownMenuItem(value: s.id, child: Text(s.name)),
                   ),
                 ],
-                onChanged: (value) => workshopId = value,
+                onChanged: (value) => siteId = value,
               ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Создать')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Создать'),
+          ),
         ],
       ),
     );
@@ -127,7 +145,7 @@ class SensorsScreen extends ConsumerWidget {
       final result = await ref.read(apiClientProvider).createSensor(
             name: nameController.text.trim(),
             deviceId: deviceIdController.text.trim(),
-            workshopId: workshopId,
+            siteId: siteId,
           );
       ref.invalidate(sensorsProvider);
       if (context.mounted) {
@@ -135,7 +153,9 @@ class SensorsScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(friendlyApiError(e))),
+        );
       }
     }
   }
@@ -144,10 +164,10 @@ class SensorsScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     Sensor sensor,
-    List<Workshop> workshops,
+    List<Site> sites,
   ) async {
     final nameController = TextEditingController(text: sensor.name);
-    int? workshopId = sensor.workshopId;
+    int? siteId = sensor.siteId;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -160,23 +180,29 @@ class SensorsScreen extends ConsumerWidget {
               controller: nameController,
               decoration: const InputDecoration(labelText: 'Название'),
             ),
-            if (workshops.isNotEmpty)
+            if (sites.isNotEmpty)
               DropdownButtonFormField<int?>(
-                value: workshopId,
-                decoration: const InputDecoration(labelText: 'Цех'),
+                value: siteId,
+                decoration: const InputDecoration(labelText: 'Площадка'),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('Без цеха')),
-                  ...workshops.map(
-                    (w) => DropdownMenuItem(value: w.id, child: Text(w.name)),
+                  const DropdownMenuItem(value: null, child: Text('Без площадки')),
+                  ...sites.map(
+                    (s) => DropdownMenuItem(value: s.id, child: Text(s.name)),
                   ),
                 ],
-                onChanged: (value) => workshopId = value,
+                onChanged: (value) => siteId = value,
               ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Сохранить')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Сохранить'),
+          ),
         ],
       ),
     );
@@ -187,26 +213,38 @@ class SensorsScreen extends ConsumerWidget {
       await ref.read(apiClientProvider).updateSensor(
             sensor.id,
             name: nameController.text.trim(),
-            workshopId: workshopId,
-            clearWorkshop: workshopId == null,
+            siteId: siteId,
+            clearSite: siteId == null,
           );
       ref.invalidate(sensorsProvider);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(friendlyApiError(e))),
+        );
       }
     }
   }
 
-  Future<void> _deleteSensor(BuildContext context, WidgetRef ref, Sensor sensor) async {
+  Future<void> _deleteSensor(
+    BuildContext context,
+    WidgetRef ref,
+    Sensor sensor,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Удалить датчик?'),
         content: Text(sensor.name),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Удалить')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить'),
+          ),
         ],
       ),
     );
@@ -215,7 +253,10 @@ class SensorsScreen extends ConsumerWidget {
     ref.invalidate(sensorsProvider);
   }
 
-  Future<void> _showTokenDialog(BuildContext context, SensorCreateResult result) {
+  Future<void> _showTokenDialog(
+    BuildContext context,
+    SensorCreateResult result,
+  ) {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -237,7 +278,11 @@ class SensorsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => copyToClipboard(context, result.apiToken, message: 'Токен скопирован'),
+            onPressed: () => copyToClipboard(
+              context,
+              result.apiToken,
+              message: 'Токен скопирован',
+            ),
             child: const Text('Копировать токен'),
           ),
           TextButton(

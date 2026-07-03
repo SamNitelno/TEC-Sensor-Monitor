@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
+import 'package:tek_sensor_monitor/models/reading_point.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/current_chart.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/group_filter_panel.dart';
 
@@ -16,12 +18,19 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Timer? _refreshTimer;
+  bool _connectionSnackShown = false;
 
   @override
   void initState() {
     super.initState();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      ref.read(dashboardPollTickProvider.notifier).state++;
       ref.invalidate(readingsProvider);
+      ref.invalidate(sensorsProvider);
+      ref.invalidate(workshopsProvider);
+      if (ref.read(workshopFilterProvider) != null) {
+        ref.invalidate(sitesProvider);
+      }
     });
   }
 
@@ -31,19 +40,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     super.dispose();
   }
 
+  String? _connectionIssue(
+    AsyncValue workshops,
+    AsyncValue sites,
+    AsyncValue sensors,
+  ) {
+    for (final async in [workshops, sites, sensors]) {
+      if (async.hasError && isConnectionError(async.error!)) {
+        return 'Нет связи с сервером — показаны последние известные данные';
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final sensorsAsync = ref.watch(sensorsProvider);
     final sitesAsync = ref.watch(sitesProvider);
     final workshopsAsync = ref.watch(workshopsProvider);
+    final cachedWorkshops = ref.watch(workshopsCacheProvider);
+    final cachedSites = ref.watch(sitesCacheProvider);
+    final cachedSensors = ref.watch(sensorsCacheProvider);
+    final cachedReadings = ref.watch(readingsCacheProvider);
     final selectedIds = ref.watch(selectedSensorIdsProvider);
     final siteId = ref.watch(siteFilterProvider);
     final workshopId = ref.watch(workshopFilterProvider);
     final preset = ref.watch(timeRangePresetProvider);
     final customRange = ref.watch(customTimeRangeProvider);
+    final isLiveWindow = ref.watch(chartLiveWindowProvider);
+    final liveSpan = ref.watch(chartWindowSpanProvider);
     final scale = ref.watch(chartScaleProvider);
+    final range = ref.watch(timeRangeProvider);
     final readingsAsync = ref.watch(readingsProvider);
+
+    final connectionIssue = _connectionIssue(workshopsAsync, sitesAsync, sensorsAsync);
+    if (connectionIssue != null && !_connectionSnackShown) {
+      _connectionSnackShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(connectionIssue),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      });
+    } else if (connectionIssue == null) {
+      _connectionSnackShown = false;
+    }
 
     ref.listen(sensorsProvider, (previous, next) {
       next.whenData((sensors) {
@@ -59,19 +104,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           GroupFilterPanel(
-            sitesAsync: sitesAsync,
             workshopsAsync: workshopsAsync,
+            sitesAsync: sitesAsync,
             sensorsAsync: sensorsAsync,
+            cachedWorkshops: cachedWorkshops,
+            cachedSites: cachedSites,
+            cachedSensors: cachedSensors,
             selectedSensorIds: selectedIds,
             selectedSiteId: siteId,
             selectedWorkshopId: workshopId,
-            onSiteChanged: (siteId) {
-              ref.read(siteFilterProvider.notifier).state = siteId;
-              ref.read(workshopFilterProvider.notifier).state = null;
+            connectionIssue: connectionIssue,
+            onWorkshopChanged: (id) {
+              ref.read(workshopFilterProvider.notifier).state = id;
+              ref.read(siteFilterProvider.notifier).state = null;
               ref.read(selectedSensorIdsProvider.notifier).state = {};
             },
-            onWorkshopChanged: (workshopId) {
-              ref.read(workshopFilterProvider.notifier).state = workshopId;
+            onSiteChanged: (id) {
+              ref.read(siteFilterProvider.notifier).state = id;
               ref.read(selectedSensorIdsProvider.notifier).state = {};
             },
             onSensorToggle: (sensorId, selected) {
@@ -85,80 +134,180 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             },
           ),
           const SizedBox(height: 12),
-          _RangePresetBar(
-            selected: preset,
-            hasCustom: customRange != null,
+          _TimeControlBar(
+            preset: preset,
+            presetSelected: isLiveWindow && liveSpan == null && customRange == null,
+            hasCustom: !isLiveWindow && customRange != null,
+            scale: scale,
             onPreset: (value) {
-              ref.read(customTimeRangeProvider.notifier).state = null;
               ref.read(timeRangePresetProvider.notifier).state = value;
+              ref.read(chartScaleProvider.notifier).state =
+                  defaultChartScaleForPreset(value);
+              setLiveChartWindow(ref);
             },
+            onScale: (value) => ref.read(chartScaleProvider.notifier).state = value,
             onCustom: () => _pickCustomRange(context),
-          ),
-          const SizedBox(height: 12),
-          _ScaleBar(
-            selected: scale,
-            onChanged: (value) =>
-                ref.read(chartScaleProvider.notifier).state = value,
           ),
           const SizedBox(height: 16),
           Expanded(
             child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: readingsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (error, _) => _MessagePanel(
-                    icon: Icons.error_outline,
-                    title: 'Не удалось загрузить данные',
-                    subtitle: error.toString(),
-                    color: theme.colorScheme.error,
-                  ),
-                  data: (response) {
-                    final chartSeries = response.series
-                        .where((s) => s.points.isNotEmpty)
-                        .toList();
-                    if (chartSeries.isEmpty) {
-                      return _MessagePanel(
-                        icon: Icons.show_chart,
-                        title: 'Нет данных за выбранный период',
-                        subtitle:
-                            'Выберите датчик или группу и убедитесь, что телеметрия поступает.',
-                        color: theme.colorScheme.secondary,
-                      );
-                    }
-                    final pointsCount =
-                        chartSeries.fold<int>(0, (sum, s) => sum + s.points.length);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Ток фазы · $pointsCount точек · ${chartSeries.length} ряд(ов)',
-                          style: theme.textTheme.labelLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: CurrentChart(
-                            series: [
-                              for (var i = 0; i < chartSeries.length; i++)
-                                ChartSeriesData(
-                                  sensorId: chartSeries[i].sensorId,
-                                  sensorName: chartSeries[i].sensorName,
-                                  points: chartSeries[i].points,
-                                  color: CurrentChart.colorForIndex(i),
-                                ),
-                            ],
-                            scale: scale,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                child: _buildChartArea(
+                  theme: theme,
+                  readingsAsync: readingsAsync,
+                  cachedReadings: cachedReadings,
+                  scale: scale,
+                  range: range,
+                  connectionIssue: connectionIssue,
                 ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildChartArea({
+    required ThemeData theme,
+    required AsyncValue readingsAsync,
+    required GroupedReadingsResponse? cachedReadings,
+    required ChartScale scale,
+    required TimeRange range,
+    required String? connectionIssue,
+  }) {
+    return readingsAsync.when(
+      loading: () {
+        if (cachedReadings != null) {
+          return _chartContent(
+            theme: theme,
+            response: cachedReadings,
+            scale: scale,
+            range: range,
+            connectionIssue: connectionIssue,
+            isStale: true,
+          );
+        }
+        return const Center(child: CircularProgressIndicator());
+      },
+      error: (error, _) {
+        if (cachedReadings != null) {
+          return _chartContent(
+            theme: theme,
+            response: cachedReadings,
+            scale: scale,
+            range: range,
+            connectionIssue: connectionIssue ?? friendlyApiError(error),
+            isStale: true,
+          );
+        }
+        return _MessagePanel(
+          icon: Icons.error_outline,
+          title: 'Не удалось загрузить данные',
+          subtitle: friendlyApiError(error),
+          color: theme.colorScheme.error,
+        );
+      },
+      data: (response) => _chartContent(
+        theme: theme,
+        response: response,
+        scale: scale,
+        range: range,
+        connectionIssue: connectionIssue,
+        isStale: false,
+      ),
+    );
+  }
+
+  Widget _chartContent({
+    required ThemeData theme,
+    required GroupedReadingsResponse response,
+    required ChartScale scale,
+    required TimeRange range,
+    required String? connectionIssue,
+    required bool isStale,
+  }) {
+    final chartSeries =
+        response.series.where((s) => s.points.isNotEmpty).toList();
+    if (chartSeries.isEmpty) {
+      return _MessagePanel(
+        icon: Icons.show_chart,
+        title: 'Нет данных за выбранный период',
+        subtitle:
+            'Выберите датчик или группу и убедитесь, что телеметрия поступает.',
+        color: theme.colorScheme.secondary,
+      );
+    }
+
+    final pointsCount =
+        chartSeries.fold<int>(0, (sum, s) => sum + s.points.length);
+    DateTime? latestPointTime;
+    for (final series in chartSeries) {
+      for (final point in series.points) {
+        if (latestPointTime == null || point.time.isAfter(latestPointTime)) {
+          latestPointTime = point.time;
+        }
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Ток фазы · $pointsCount точек · ${chartSeries.length} ряд(ов)',
+                style: theme.textTheme.labelLarge,
+              ),
+            ),
+            if (isStale || connectionIssue != null)
+              Chip(
+                avatar: const Icon(Icons.cloud_off, size: 16),
+                label: const Text('offline'),
+                visualDensity: VisualDensity.compact,
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: CurrentChart(
+            key: ValueKey(
+              '${range.end.millisecondsSinceEpoch}_'
+              '${latestPointTime?.millisecondsSinceEpoch ?? 0}_$pointsCount',
+            ),
+            series: [
+              for (var i = 0; i < chartSeries.length; i++)
+                ChartSeriesData(
+                  sensorId: chartSeries[i].sensorId,
+                  sensorName: chartSeries[i].sensorName,
+                  points: chartSeries[i].points,
+                  color: CurrentChart.colorForIndex(i),
+                ),
+            ],
+            scale: scale,
+            rangeStart: range.start,
+            rangeEnd: range.end,
+            onVisibleRangeChanged: (start, end) {
+              final span = end.difference(start);
+              final isLive = end.isAfter(
+                DateTime.now().subtract(const Duration(minutes: 2)),
+              );
+              ref.read(chartScaleProvider.notifier).state =
+                  chartScaleForVisibleSpan(span);
+              if (isLive) {
+                setLiveChartWindow(ref, span: span);
+              } else {
+                setHistoricalChartWindow(
+                  ref,
+                  TimeRange(start: start, end: end),
+                );
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -178,78 +327,78 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       helpText: 'Произвольный диапазон',
     );
     if (picked != null) {
-      ref.read(customTimeRangeProvider.notifier).state = TimeRange(
-        start: DateTime(picked.start.year, picked.start.month, picked.start.day),
-        end: DateTime(
-          picked.end.year,
-          picked.end.month,
-          picked.end.day,
-          23,
-          59,
-          59,
+      setHistoricalChartWindow(
+        ref,
+        TimeRange(
+          start: DateTime(picked.start.year, picked.start.month, picked.start.day),
+          end: DateTime(
+            picked.end.year,
+            picked.end.month,
+            picked.end.day,
+            23,
+            59,
+            59,
+          ),
         ),
       );
+      final span = picked.end.difference(picked.start);
+      ref.read(chartScaleProvider.notifier).state = chartScaleForVisibleSpan(span);
     }
   }
 }
 
-class _RangePresetBar extends StatelessWidget {
-  const _RangePresetBar({
-    required this.selected,
+class _TimeControlBar extends StatelessWidget {
+  const _TimeControlBar({
+    required this.preset,
+    required this.presetSelected,
     required this.hasCustom,
+    required this.scale,
     required this.onPreset,
+    required this.onScale,
     required this.onCustom,
   });
 
-  final TimeRangePreset selected;
+  final TimeRangePreset preset;
+  final bool presetSelected;
   final bool hasCustom;
+  final ChartScale scale;
   final ValueChanged<TimeRangePreset> onPreset;
+  final ValueChanged<ChartScale> onScale;
   final VoidCallback onCustom;
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final preset in TimeRangePreset.values)
-          ChoiceChip(
-            label: Text(preset.label),
-            selected: !hasCustom && selected == preset,
-            onSelected: (_) => onPreset(preset),
-          ),
-        ActionChip(
-          label: const Text('Свой'),
-          avatar: const Icon(Icons.date_range, size: 18),
-          onPressed: onCustom,
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text('Период:', style: theme.textTheme.bodyMedium),
+            for (final p in TimeRangePreset.values)
+              ChoiceChip(
+                label: Text(p.label),
+                selected: presetSelected && preset == p,
+                onSelected: (_) => onPreset(p),
+              ),
+            ActionChip(
+              label: const Text('Свой'),
+              avatar: const Icon(Icons.date_range, size: 18),
+              onPressed: onCustom,
+            ),
+            const SizedBox(width: 8),
+            Text('Детализация:', style: theme.textTheme.bodyMedium),
+            for (final s in ChartScale.values)
+              ChoiceChip(
+                label: Text(s.label),
+                selected: scale == s,
+                onSelected: (_) => onScale(s),
+              ),
+          ],
         ),
-      ],
-    );
-  }
-}
-
-class _ScaleBar extends StatelessWidget {
-  const _ScaleBar({
-    required this.selected,
-    required this.onChanged,
-  });
-
-  final ChartScale selected;
-  final ValueChanged<ChartScale> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        Text('Масштаб:', style: Theme.of(context).textTheme.bodyMedium),
-        for (final scale in ChartScale.values)
-          ChoiceChip(
-            label: Text(scale.label),
-            selected: selected == scale,
-            onSelected: (_) => onChanged(scale),
-          ),
       ],
     );
   }
@@ -278,9 +427,17 @@ class _MessagePanel extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: color),
             const SizedBox(height: 16),
-            Text(title, style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.headlineMedium,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 8),
-            Text(subtitle, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+            Text(
+              subtitle,
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

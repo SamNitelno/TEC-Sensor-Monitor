@@ -68,14 +68,14 @@ class ApiClient {
   Future<SensorCreateResult> createSensor({
     required String name,
     required String deviceId,
-    int? workshopId,
+    int? siteId,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/v1/sensors',
       data: {
         'name': name,
         'device_id': deviceId,
-        if (workshopId != null) 'workshop_id': workshopId,
+        if (siteId != null) 'site_id': siteId,
       },
     );
     return SensorCreateResult.fromJson(response.data ?? {});
@@ -84,15 +84,15 @@ class ApiClient {
   Future<Sensor> updateSensor(
     int id, {
     String? name,
-    int? workshopId,
-    bool clearWorkshop = false,
+    int? siteId,
+    bool clearSite = false,
   }) async {
     final response = await _dio.patch<Map<String, dynamic>>(
       '/api/v1/sensors/$id',
       data: {
         if (name != null) 'name': name,
-        if (clearWorkshop) 'workshop_id': null,
-        if (!clearWorkshop && workshopId != null) 'workshop_id': workshopId,
+        if (clearSite) 'site_id': null,
+        if (!clearSite && siteId != null) 'site_id': siteId,
       },
     );
     return Sensor.fromJson(response.data ?? {});
@@ -114,17 +114,23 @@ class ApiClient {
     return ProvisioningCredentials.fromJson(response.data ?? {});
   }
 
-  Future<List<Site>> fetchSites() async {
-    final response = await _dio.get<List<dynamic>>('/api/v1/sites');
+  Future<List<Site>> fetchSites({int? workshopId}) async {
+    final response = await _dio.get<List<dynamic>>(
+      '/api/v1/sites',
+      queryParameters: {if (workshopId != null) 'workshop_id': workshopId},
+    );
     return (response.data ?? [])
         .map((item) => Site.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 
-  Future<Site> createSite(String name) async {
+  Future<Site> createSite({
+    required String name,
+    required int workshopId,
+  }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/v1/sites',
-      data: {'name': name},
+      data: {'name': name, 'workshop_id': workshopId},
     );
     return Site.fromJson(response.data ?? {});
   }
@@ -133,23 +139,17 @@ class ApiClient {
     await _dio.delete<void>('/api/v1/sites/$id');
   }
 
-  Future<List<Workshop>> fetchWorkshops({int? siteId}) async {
-    final response = await _dio.get<List<dynamic>>(
-      '/api/v1/workshops',
-      queryParameters: {if (siteId != null) 'site_id': siteId},
-    );
+  Future<List<Workshop>> fetchWorkshops() async {
+    final response = await _dio.get<List<dynamic>>('/api/v1/workshops');
     return (response.data ?? [])
         .map((item) => Workshop.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 
-  Future<Workshop> createWorkshop({
-    required String name,
-    required int siteId,
-  }) async {
+  Future<Workshop> createWorkshop({required String name}) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/v1/workshops',
-      data: {'name': name, 'site_id': siteId},
+      data: {'name': name},
     );
     return Workshop.fromJson(response.data ?? {});
   }

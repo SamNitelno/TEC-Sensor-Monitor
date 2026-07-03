@@ -3,7 +3,7 @@ class Sensor {
     required this.id,
     required this.name,
     required this.deviceId,
-    required this.workshopId,
+    required this.siteId,
     required this.status,
     required this.lastSeen,
   });
@@ -14,7 +14,7 @@ class Sensor {
       id: json['id'] as int,
       name: json['name'] as String,
       deviceId: json['device_id'] as String,
-      workshopId: json['workshop_id'] as int?,
+      siteId: json['site_id'] as int?,
       status: json['status'] as String,
       lastSeen: lastSeenRaw == null ? null : DateTime.parse(lastSeenRaw as String),
     );
@@ -23,7 +23,7 @@ class Sensor {
   final int id;
   final String name;
   final String deviceId;
-  final int? workshopId;
+  final int? siteId;
   final String status;
   final DateTime? lastSeen;
 

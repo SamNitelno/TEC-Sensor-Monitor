@@ -1,6 +1,7 @@
 #include "telemetry.h"
 
 #include "hardware_config.h"
+#include "wifi_manager.h"
 
 #include <HTTPClient.h>
 #include <WiFi.h>
@@ -9,9 +10,12 @@
 #include <ArduinoJson.h>
 
 namespace {
+constexpr uint8_t kMaxPostAttempts = 3;
+constexpr uint8_t kFailuresBeforeWifiReset = 5;
+
 String iso8601UtcNow() {
   struct tm timeInfo {};
-  if (!getLocalTime(&timeInfo, 100)) {
+  if (!getLocalTime(&timeInfo, 500)) {
     return "";
   }
   char buffer[32];
@@ -19,19 +23,18 @@ String iso8601UtcNow() {
   return String(buffer) + "Z";
 }
 
-bool sendReading(const DeviceConfig& config, float currentA, float powerW, bool sensorOk) {
-  if (WiFi.status() != WL_CONNECTED) {
-    return false;
-  }
-
+bool postOnce(const DeviceConfig& config, float currentA, float powerW, bool sensorOk) {
   HTTPClient http;
+  http.setConnectTimeout(5000);
   http.setTimeout(10000);
+  http.setReuse(false);
   if (!http.begin(config.serverUrl)) {
-    Serial.println("Invalid server URL");
+    Serial.printf("Invalid server URL: %s\n", config.serverUrl.c_str());
     return false;
   }
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Device-Token", config.deviceToken);
+  http.addHeader("Connection", "close");
 
   JsonDocument doc;
   doc["current_a"] = currentA;
@@ -48,8 +51,33 @@ bool sendReading(const DeviceConfig& config, float currentA, float powerW, bool 
   const int code = http.POST(body);
   http.end();
 
-  Serial.printf("Telemetry POST %d body=%s\n", code, body.c_str());
+  Serial.printf("Telemetry POST %d url=%s body=%s\n",
+                code, config.serverUrl.c_str(), body.c_str());
   return code == 202;
+}
+
+bool sendReading(const DeviceConfig& config, float currentA, float powerW, bool sensorOk) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Wi-Fi not connected");
+    return false;
+  }
+
+  for (uint8_t attempt = 0; attempt < kMaxPostAttempts; attempt++) {
+    if (attempt > 0) {
+      delay(400);
+    }
+    if (postOnce(config, currentA, powerW, sensorOk)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void resetWifiLink(const DeviceConfig& config) {
+  Serial.printf("Resetting Wi-Fi (IP was %s)\n", WiFi.localIP().toString().c_str());
+  WiFi.disconnect(false);
+  delay(250);
+  connectWifi(config, 20000);
 }
 }  // namespace
 
@@ -61,9 +89,10 @@ void runTelemetryLoop(const DeviceConfig& config, CurrentSensor& sensor) {
   }
 
   uint32_t lastSend = 0;
+  uint8_t sendFailures = 0;
   while (true) {
     if (WiFi.status() != WL_CONNECTED) {
-      connectWifi(config);
+      connectWifi(config, 20000);
       delay(1000);
       continue;
     }
@@ -76,7 +105,15 @@ void runTelemetryLoop(const DeviceConfig& config, CurrentSensor& sensor) {
       const bool sensorOk = sensor.ok();
       Serial.printf("[CAL] I=%.4f A P=%.1f W ok=%d scale=%.4f\n",
                     current, power, sensorOk ? 1 : 0, CURRENT_SCALE);
-      sendReading(config, current, power, sensorOk);
+      if (sendReading(config, current, power, sensorOk)) {
+        sendFailures = 0;
+      } else {
+        sendFailures++;
+        if (sendFailures >= kFailuresBeforeWifiReset) {
+          resetWifiLink(config);
+          sendFailures = 0;
+        }
+      }
     }
     delay(50);
   }

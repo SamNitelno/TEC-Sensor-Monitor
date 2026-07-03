@@ -10,7 +10,7 @@ class SensorListItem(BaseModel):
     id: int
     name: str
     device_id: str
-    workshop_id: int | None
+    site_id: int | None
     status: SensorStatus
     last_seen: datetime | None
 
@@ -22,12 +22,12 @@ class SensorDetail(SensorListItem):
 class SensorCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     device_id: str = Field(min_length=1, max_length=64)
-    workshop_id: int | None = None
+    site_id: int | None = None
 
 
 class SensorUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    workshop_id: int | None = None
+    site_id: int | None = None
 
 
 class IntegrationSnippet(BaseModel):

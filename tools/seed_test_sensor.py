@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a test site, workshop, and sensor for device/emulator development (idempotent)."""
+"""Create a test workshop, site, and sensor for device/emulator development (idempotent)."""
 
 import asyncio
 import os
@@ -18,8 +18,8 @@ from app.models.sensor import Sensor
 from app.models.site import Site
 from app.models.workshop import Workshop
 
-TEST_SITE_NAME = "Тестовая площадка"
 TEST_WORKSHOP_NAME = "Тестовый цех"
+TEST_SITE_NAME = "Тестовая площадка"
 TEST_DEVICE_ID = "TEST-ESP-001"
 TEST_SENSOR_NAME = "Тестовый датчик ESP"
 
@@ -33,23 +33,25 @@ async def seed_test_sensor() -> None:
             print(f"api_token: {existing.api_token}")
             return
 
-        site_result = await session.execute(select(Site).where(Site.name == TEST_SITE_NAME))
-        site = site_result.scalar_one_or_none()
-        if site is None:
-            site = Site(name=TEST_SITE_NAME)
-            session.add(site)
-            await session.flush()
-
         workshop_result = await session.execute(
-            select(Workshop).where(
-                Workshop.name == TEST_WORKSHOP_NAME,
-                Workshop.site_id == site.id,
-            )
+            select(Workshop).where(Workshop.name == TEST_WORKSHOP_NAME)
         )
         workshop = workshop_result.scalar_one_or_none()
         if workshop is None:
-            workshop = Workshop(name=TEST_WORKSHOP_NAME, site_id=site.id)
+            workshop = Workshop(name=TEST_WORKSHOP_NAME)
             session.add(workshop)
+            await session.flush()
+
+        site_result = await session.execute(
+            select(Site).where(
+                Site.name == TEST_SITE_NAME,
+                Site.workshop_id == workshop.id,
+            )
+        )
+        site = site_result.scalar_one_or_none()
+        if site is None:
+            site = Site(name=TEST_SITE_NAME, workshop_id=workshop.id)
+            session.add(site)
             await session.flush()
 
         api_token = secrets.token_urlsafe(32)
@@ -57,7 +59,7 @@ async def seed_test_sensor() -> None:
             name=TEST_SENSOR_NAME,
             device_id=TEST_DEVICE_ID,
             api_token=api_token,
-            workshop_id=workshop.id,
+            site_id=site.id,
         )
         session.add(sensor)
         await session.commit()

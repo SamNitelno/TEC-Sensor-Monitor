@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     api_public_base_url: str = "http://localhost:8000"
     viewer_login: str = "viewer"
     viewer_password: str = "viewer"
+    sensor_offline_threshold_seconds: int = 25
+    sensor_offline_check_interval_seconds: int = 5
 
 
 settings = Settings()

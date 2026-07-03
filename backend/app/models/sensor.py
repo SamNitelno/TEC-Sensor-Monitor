@@ -10,7 +10,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.downtime_event import DowntimeEvent
     from app.models.reading import Reading
-    from app.models.workshop import Workshop
+    from app.models.site import Site
 
 
 class SensorStatus(str, enum.Enum):
@@ -25,7 +25,7 @@ class Sensor(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     device_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     api_token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    workshop_id: Mapped[int | None] = mapped_column(ForeignKey("workshops.id"), nullable=True)
+    site_id: Mapped[int | None] = mapped_column(ForeignKey("sites.id"), nullable=True)
     status: Mapped[SensorStatus] = mapped_column(
         Enum(SensorStatus, name="sensor_status", native_enum=True),
         nullable=False,
@@ -38,6 +38,6 @@ class Sensor(Base):
         nullable=False,
     )
 
-    workshop: Mapped["Workshop | None"] = relationship(back_populates="sensors")
+    site: Mapped["Site | None"] = relationship(back_populates="sensors")
     readings: Mapped[list["Reading"]] = relationship(back_populates="sensor")
     downtime_events: Mapped[list["DowntimeEvent"]] = relationship(back_populates="sensor")

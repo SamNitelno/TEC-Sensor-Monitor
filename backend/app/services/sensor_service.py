@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.sensor import Sensor
-from app.repositories import sensor_repository, site_repository, workshop_repository
+from app.repositories import sensor_repository, site_repository
+from app.services.sensor_status import effective_status
 from app.schemas.sensor import (
     IntegrationSnippet,
     ProvisioningTokenResponse,
@@ -21,8 +22,8 @@ def _to_detail(sensor: Sensor) -> SensorDetail:
         id=sensor.id,
         name=sensor.name,
         device_id=sensor.device_id,
-        workshop_id=sensor.workshop_id,
-        status=sensor.status,
+        site_id=sensor.site_id,
+        status=effective_status(sensor),
         last_seen=sensor.last_seen,
         created_at=sensor.created_at,
     )
@@ -62,10 +63,10 @@ async def create_sensor(session: AsyncSession, payload: SensorCreate) -> SensorC
             status_code=status.HTTP_409_CONFLICT,
             detail="device_id already exists",
         )
-    if payload.workshop_id is not None:
-        workshop = await workshop_repository.get_by_id(session, payload.workshop_id)
-        if workshop is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workshop not found")
+    if payload.site_id is not None:
+        site = await site_repository.get_by_id(session, payload.site_id)
+        if site is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
 
     api_token = secrets.token_urlsafe(32)
     sensor = await sensor_repository.create(
@@ -73,7 +74,7 @@ async def create_sensor(session: AsyncSession, payload: SensorCreate) -> SensorC
         name=payload.name,
         device_id=payload.device_id,
         api_token=api_token,
-        workshop_id=payload.workshop_id,
+        site_id=payload.site_id,
     )
     await session.commit()
     await session.refresh(sensor)
@@ -94,18 +95,18 @@ async def update_sensor(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sensor not found")
 
     updates = payload.model_dump(exclude_unset=True)
-    if "workshop_id" in updates and updates["workshop_id"] is not None:
-        workshop = await workshop_repository.get_by_id(session, updates["workshop_id"])
-        if workshop is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workshop not found")
+    if "site_id" in updates and updates["site_id"] is not None:
+        site = await site_repository.get_by_id(session, updates["site_id"])
+        if site is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
 
-    clear_workshop = "workshop_id" in updates and updates["workshop_id"] is None
+    clear_site = "site_id" in updates and updates["site_id"] is None
     await sensor_repository.update(
         session,
         sensor,
         name=updates.get("name"),
-        workshop_id=updates.get("workshop_id"),
-        clear_workshop=clear_workshop,
+        site_id=updates.get("site_id"),
+        clear_site=clear_site,
     )
     await session.commit()
     await session.refresh(sensor)

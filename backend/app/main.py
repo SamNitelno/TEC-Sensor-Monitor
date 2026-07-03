@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import asyncio
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,13 +7,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.db.session import async_session_factory
 from app.routers import auth, ingest, readings, sensors, sites, workshops
 from app.services.admin_bootstrap import ensure_admin_user
+from app.services.offline_sensor_service import offline_watchdog_loop
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with async_session_factory() as session:
         await ensure_admin_user(session)
-    yield
+    watchdog_task = asyncio.create_task(offline_watchdog_loop())
+    try:
+        yield
+    finally:
+        watchdog_task.cancel()
+        try:
+            await watchdog_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_admin, require_viewer
@@ -16,8 +16,9 @@ router = APIRouter(prefix="/sites", tags=["sites"])
 async def list_sites(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[User, Depends(require_viewer)],
+    workshop_id: Annotated[int | None, Query()] = None,
 ) -> list[SiteResponse]:
-    return await site_service.list_sites(db)
+    return await site_service.list_sites(db, workshop_id=workshop_id)
 
 
 @router.post("", response_model=SiteResponse, status_code=status.HTTP_201_CREATED)
