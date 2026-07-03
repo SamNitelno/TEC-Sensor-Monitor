@@ -9,3 +9,4 @@ frontend/build/
 .idea/
 CONTEXT.md
 .cursor/
+firmware/src/secrets.h

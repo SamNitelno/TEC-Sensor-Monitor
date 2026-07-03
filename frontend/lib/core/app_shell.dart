@@ -16,6 +16,23 @@ class AppShell extends ConsumerWidget {
     final auth = ref.watch(authProvider).valueOrNull;
     final location = GoRouterState.of(context).uri.path;
 
+    final destinations = <NavigationDestination>[
+      const NavigationDestination(
+        icon: Icon(Icons.show_chart),
+        label: 'Дашборд',
+      ),
+      if (isAdmin)
+        const NavigationDestination(
+          icon: Icon(Icons.sensors),
+          label: 'Датчики',
+        ),
+      if (isAdmin)
+        const NavigationDestination(
+          icon: Icon(Icons.account_tree),
+          label: 'Группы',
+        ),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('ТЭК · Мониторинг датчиков'),
@@ -44,39 +61,27 @@ class AppShell extends ConsumerWidget {
         ],
       ),
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _indexForPath(location),
-        onDestinationSelected: (index) {
-          switch (index) {
-            case 0:
-              context.go('/');
-            case 1:
-              if (isAdmin) context.go('/sensors');
-            case 2:
-              if (isAdmin) context.go('/groups');
-          }
-        },
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.show_chart),
-            label: 'Дашборд',
-          ),
-          if (isAdmin)
-            const NavigationDestination(
-              icon: Icon(Icons.sensors),
-              label: 'Датчики',
-            ),
-          if (isAdmin)
-            const NavigationDestination(
-              icon: Icon(Icons.account_tree),
-              label: 'Группы',
-            ),
-        ],
-      ),
+      bottomNavigationBar: destinations.length >= 2
+          ? NavigationBar(
+              selectedIndex: _indexForPath(location, isAdmin),
+              onDestinationSelected: (index) {
+                switch (index) {
+                  case 0:
+                    context.go('/');
+                  case 1:
+                    if (isAdmin) context.go('/sensors');
+                  case 2:
+                    if (isAdmin) context.go('/groups');
+                }
+              },
+              destinations: destinations,
+            )
+          : null,
     );
   }
 
-  int _indexForPath(String path) {
+  int _indexForPath(String path, bool isAdmin) {
+    if (!isAdmin) return 0;
     if (path.startsWith('/sensors')) return 1;
     if (path.startsWith('/groups')) return 2;
     return 0;

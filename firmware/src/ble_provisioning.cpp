@@ -25,17 +25,17 @@ class CommitCallbacks : public BLECharacteristicCallbacks {
 
 class StringCallbacks : public BLECharacteristicCallbacks {
  public:
-  explicit StringCallbacks(String DeviceConfig::*field)
+  explicit StringCallbacks(::String DeviceConfig::*field)
       : field_(field) {}
 
   void onWrite(BLECharacteristic* characteristic) override {
     const std::string value = characteristic->getValue();
-    g_pendingConfig.*field_ = String(value.c_str());
+    g_pendingConfig.*field_ = ::String(value.c_str());
     Serial.printf("BLE write %s\n", value.c_str());
   }
 
  private:
-  String DeviceConfig::*;
+  ::String DeviceConfig::*field_;
 };
 
 void applyCommit() {

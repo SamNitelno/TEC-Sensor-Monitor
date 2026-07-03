@@ -11,4 +11,5 @@ struct DeviceConfig {
 
 bool loadConfigFromNvs(DeviceConfig& config);
 bool saveConfigToNvs(const DeviceConfig& config);
+bool wipeAllNvs();
 bool connectWifi(const DeviceConfig& config, uint32_t timeoutMs = 20000);

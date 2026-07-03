@@ -1,5 +1,7 @@
 #include "telemetry.h"
 
+#include "hardware_config.h"
+
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <time.h>
@@ -71,7 +73,10 @@ void runTelemetryLoop(const DeviceConfig& config, CurrentSensor& sensor) {
       lastSend = now;
       const float current = sensor.readCurrentA();
       const float power = sensor.readPowerW();
-      sendReading(config, current, power, sensor.ok());
+      const bool sensorOk = sensor.ok();
+      Serial.printf("[CAL] I=%.4f A P=%.1f W ok=%d scale=%.4f\n",
+                    current, power, sensorOk ? 1 : 0, CURRENT_SCALE);
+      sendReading(config, current, power, sensorOk);
     }
     delay(50);
   }

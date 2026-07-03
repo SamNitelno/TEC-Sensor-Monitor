@@ -12,6 +12,28 @@ Mycila::JSY g_jsy;
 Mycila::JSY::Data g_jsyData;
 volatile bool g_hasData = false;
 
+const Mycila::JSY::Metrics& measureChannel(const Mycila::JSY::Data& data) {
+#if JSY_MEASURE_CHANNEL == 2
+  return data.channel2();
+#else
+  return data.channel1();
+#endif
+}
+
+void logJsyChannels(const Mycila::JSY::Data& data) {
+  const auto& m = measureChannel(data);
+  Serial.printf(
+      "JSY ch%d: I=%.3fA P=%.1fW V=%.1fV (ch1 I=%.3f P=%.1f | ch2 I=%.3f P=%.1f)\n",
+      JSY_MEASURE_CHANNEL,
+      m.current * CURRENT_SCALE,
+      m.activePower,
+      m.voltage,
+      data.channel1().current * CURRENT_SCALE,
+      data.channel1().activePower,
+      data.channel2().current * CURRENT_SCALE,
+      data.channel2().activePower);
+}
+
 Mycila::JSY::BaudRate baudFromConfig() {
   switch (JSY_MODBUS_BAUD) {
     case 4800:
@@ -46,17 +68,25 @@ class JsyCurrentSensor : public CurrentSensor {
     });
     const bool readOk = g_jsy.read();
     _ok = readOk && g_hasData;
+    if (_ok) {
+      logJsyChannels(g_jsyData);
+    } else {
+      Serial.println("JSY begin: Modbus read failed");
+    }
     return _ok;
   }
 
   float readCurrentA() override {
     if (!g_jsy.read() && !g_hasData) {
       _ok = false;
+      Serial.println("JSY read failed");
       return _lastCurrent;
     }
-    _lastCurrent = g_jsyData.channel1().current * CURRENT_SCALE;
-    _lastPower = g_jsyData.channel1().activePower;
+    const auto& m = measureChannel(g_jsyData);
+    _lastCurrent = m.current * CURRENT_SCALE;
+    _lastPower = m.activePower;
     _ok = true;
+    logJsyChannels(g_jsyData);
     return _lastCurrent;
   }
 
@@ -161,16 +191,25 @@ class JsyCurrentSensor : public CurrentSensor {
 
  private:
   bool refresh() {
-    uint16_t regs[12] = {};
-    if (!modbusReadHolding(static_cast<uint8_t>(JSY_MODBUS_ADDRESS), JSY_REG_BASE, 12, regs)) {
+    uint16_t regs[16] = {};
+    if (!modbusReadHolding(static_cast<uint8_t>(JSY_MODBUS_ADDRESS), JSY_REG_BASE, 16, regs)) {
       _ok = false;
+      Serial.println("JSY raw Modbus read failed");
       return false;
     }
-    const float current = regs[JSY_OFF_CURRENT1] * 0.01f * CURRENT_SCALE;
-    const float power = static_cast<float>(regs[JSY_OFF_POWER1]);
+#if JSY_MEASURE_CHANNEL == 2
+    const uint16_t curReg = regs[JSY_OFF_CURRENT2];
+    const uint16_t pwrReg = regs[JSY_OFF_POWER2];
+#else
+    const uint16_t curReg = regs[JSY_OFF_CURRENT1];
+    const uint16_t pwrReg = regs[JSY_OFF_POWER1];
+#endif
+    const float current = curReg * 0.01f * CURRENT_SCALE;
+    const float power = static_cast<float>(pwrReg);
     _lastCurrent = current >= 0.0f ? current : 0.0f;
     _lastPower = power;
     _ok = true;
+    Serial.printf("JSY raw ch%d: I=%.3fA P=%.1fW\n", JSY_MEASURE_CHANNEL, _lastCurrent, _lastPower);
     return true;
   }
 

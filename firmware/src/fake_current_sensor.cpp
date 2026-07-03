@@ -1,5 +1,6 @@
 #include "current_sensor.h"
 
+#include <Arduino.h>
 #include <cmath>
 
 #include "hardware_config.h"

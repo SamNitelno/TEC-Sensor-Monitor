@@ -1,0 +1,4 @@
+{"sessionId":"da38c7","hypothesisId":"H1","location":"flutter doctor","message":"VS installed check","data":{"vsInstalled":true,"path":"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community","version":"17.7.34221.43"},"timestamp":1740000000000}
+{"sessionId":"da38c7","hypothesisId":"H2","location":"flutter doctor","message":"Missing VS components","data":{"missing":["MSVC v142 C++ x64/x86 build tools","C++ CMake tools for Windows","Windows 10 SDK"]},"timestamp":1740000000001}
+{"sessionId":"da38c7","hypothesisId":"H3","location":"flutter doctor","message":"VS not installed","data":{"rejected":true},"timestamp":1740000000002}
+{"sessionId":"da38c7","hypothesisId":"H4","location":"flutter doctor","message":"Windows desktop enabled","data":{"enableWindowsDesktop":true,"device":"windows-x64"},"timestamp":1740000000003}

@@ -2,6 +2,7 @@
 
 #include <Preferences.h>
 #include <WiFi.h>
+#include <nvs_flash.h>
 
 namespace {
 constexpr char kNvsNamespace[] = "tec_cfg";
@@ -11,6 +12,21 @@ constexpr char kKeyServerUrl[] = "server_url";
 constexpr char kKeyDeviceToken[] = "device_token";
 constexpr char kKeyConfigured[] = "configured";
 }  // namespace
+
+bool wipeAllNvs() {
+  const esp_err_t erased = nvs_flash_erase();
+  if (erased != ESP_OK) {
+    Serial.printf("NVS erase failed: %d\n", erased);
+    return false;
+  }
+  const esp_err_t inited = nvs_flash_init();
+  if (inited != ESP_OK) {
+    Serial.printf("NVS init failed: %d\n", inited);
+    return false;
+  }
+  Serial.println("NVS erased");
+  return true;
+}
 
 bool loadConfigFromNvs(DeviceConfig& config) {
   Preferences prefs;

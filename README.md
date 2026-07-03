@@ -105,11 +105,13 @@ python tools/esp_simulator.py --token <api_token> --url http://localhost:8000/ap
 ```powershell
 cd firmware
 pio run -e esp32dev              # без модуля JSY (FakeCurrentSensor)
-pio run -e esp32dev_jsy          # реальный JSY через MycilaJSY (рекомендуется)
-pio run -e esp32dev_jsy_raw      # сырой Modbus без библиотеки
+pio run -e esp32dev_jsy          # реальный JSY + BLE-провижининг
+pio run -e esp32dev_jsy_hc         # JSY + Wi-Fi/ток из secrets.h (без BLE)
 pio run -e esp32dev_jsy -t upload
 pio device monitor
 ```
+
+**Первичная проверка JSY без BLE:** скопируйте `firmware/src/secrets.h.example` → `secrets.h`, заполните Wi-Fi, LAN-URL ingest и `api_token`, затем `pio run -e esp32dev_jsy_hc -t upload`. Файл `secrets.h` в `.gitignore`.
 
 Параметры в [`firmware/src/hardware_config.h`](firmware/src/hardware_config.h): пины UART, baud, адрес Modbus, `CURRENT_SCALE` (поправка при CT 150A).
 
