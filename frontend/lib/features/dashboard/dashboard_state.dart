@@ -40,3 +40,75 @@ class TimeRange {
     return TimeRange(start: range.start, end: range.end);
   }
 }
+
+/// Independent display settings for one dashboard chart panel.
+class ChartPanelConfig {
+  const ChartPanelConfig({
+    required this.id,
+    this.title = '',
+    this.preset = TimeRangePreset.minute,
+    this.customRange,
+    this.isLive = true,
+    this.liveSpan,
+    this.scale = ChartScale.seconds,
+    this.workshopIds = const {},
+    this.siteIds = const {},
+    this.allSensors = true,
+    this.selectedSensorIds = const {},
+  });
+
+  final String id;
+  final String title;
+  final TimeRangePreset preset;
+  final TimeRange? customRange;
+  final bool isLive;
+  final Duration? liveSpan;
+  final ChartScale scale;
+  final Set<int> workshopIds;
+  final Set<int> siteIds;
+  final bool allSensors;
+  final Set<int> selectedSensorIds;
+
+  String displayTitle(int index) =>
+      title.isNotEmpty ? title : 'График ${index + 1}';
+
+  ChartPanelConfig copyWith({
+    String? title,
+    TimeRangePreset? preset,
+    TimeRange? customRange,
+    bool clearCustomRange = false,
+    bool? isLive,
+    Duration? liveSpan,
+    bool clearLiveSpan = false,
+    ChartScale? scale,
+    Set<int>? workshopIds,
+    Set<int>? siteIds,
+    bool? allSensors,
+    Set<int>? selectedSensorIds,
+  }) {
+    return ChartPanelConfig(
+      id: id,
+      title: title ?? this.title,
+      preset: preset ?? this.preset,
+      customRange: clearCustomRange ? null : (customRange ?? this.customRange),
+      isLive: isLive ?? this.isLive,
+      liveSpan: clearLiveSpan ? null : (liveSpan ?? this.liveSpan),
+      scale: scale ?? this.scale,
+      workshopIds: workshopIds ?? this.workshopIds,
+      siteIds: siteIds ?? this.siteIds,
+      allSensors: allSensors ?? this.allSensors,
+      selectedSensorIds: selectedSensorIds ?? this.selectedSensorIds,
+    );
+  }
+}
+
+extension ChartScaleCycle on ChartScale {
+  ChartScale adjustByWheelDelta(double delta) {
+    final values = ChartScale.values;
+    final index = values.indexOf(this);
+    if (index < 0) return this;
+    final next = delta > 0 ? index + 1 : index - 1;
+    if (next < 0 || next >= values.length) return this;
+    return values[next];
+  }
+}

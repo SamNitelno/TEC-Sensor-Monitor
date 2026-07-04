@@ -9,6 +9,8 @@ String friendlyApiError(Object error) {
         return 'Нет связи с сервером';
       case DioExceptionType.badResponse:
         final code = error.response?.statusCode;
+        final detail = _extractDetail(error.response?.data);
+        if (detail != null) return detail;
         if (code == 401) return 'Требуется вход';
         if (code == 403) return 'Недостаточно прав';
         return 'Ошибка сервера ($code)';
@@ -17,6 +19,20 @@ String friendlyApiError(Object error) {
     }
   }
   return 'Ошибка загрузки';
+}
+
+String? _extractDetail(Object? data) {
+  if (data is Map) {
+    final detail = data['detail'];
+    if (detail is String && detail.isNotEmpty) return detail;
+    if (detail is List && detail.isNotEmpty) {
+      final first = detail.first;
+      if (first is Map && first['msg'] is String) {
+        return first['msg'] as String;
+      }
+    }
+  }
+  return null;
 }
 
 bool isConnectionError(Object error) {

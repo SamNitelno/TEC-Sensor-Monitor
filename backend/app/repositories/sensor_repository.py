@@ -54,12 +54,16 @@ async def create(
     device_id: str,
     api_token: str,
     site_id: int | None,
+    color: str | None = None,
+    created_by_user_id: int | None = None,
 ) -> Sensor:
     sensor = Sensor(
         name=name,
         device_id=device_id,
         api_token=api_token,
         site_id=site_id,
+        color=color,
+        created_by_user_id=created_by_user_id,
     )
     session.add(sensor)
     await session.flush()
@@ -73,6 +77,15 @@ async def update(
     name: str | None = None,
     site_id: int | None = None,
     clear_site: bool = False,
+    color: str | None = None,
+    clear_color: bool = False,
+    idle_power_threshold_w: float | None = None,
+    clear_idle_power_threshold: bool = False,
+    idle_current_threshold_a: float | None = None,
+    clear_idle_current_threshold: bool = False,
+    idle_duration_seconds: int | None = None,
+    clear_idle_duration: bool = False,
+    notifications_enabled: bool | None = None,
 ) -> Sensor:
     if name is not None:
         sensor.name = name
@@ -80,8 +93,69 @@ async def update(
         sensor.site_id = None
     elif site_id is not None:
         sensor.site_id = site_id
+    if clear_color:
+        sensor.color = None
+    elif color is not None:
+        sensor.color = color
+    if clear_idle_power_threshold:
+        sensor.idle_power_threshold_w = None
+    elif idle_power_threshold_w is not None:
+        sensor.idle_power_threshold_w = idle_power_threshold_w
+    if clear_idle_current_threshold:
+        sensor.idle_current_threshold_a = None
+    elif idle_current_threshold_a is not None:
+        sensor.idle_current_threshold_a = idle_current_threshold_a
+    if clear_idle_duration:
+        sensor.idle_duration_seconds = None
+    elif idle_duration_seconds is not None:
+        sensor.idle_duration_seconds = idle_duration_seconds
+    if notifications_enabled is not None:
+        sensor.notifications_enabled = notifications_enabled
     await session.flush()
     return sensor
+
+
+async def set_notifications_enabled_all(
+    session: AsyncSession,
+    *,
+    enabled: bool,
+) -> int:
+    result = await session.execute(
+        sa_update(Sensor).values(notifications_enabled=enabled)
+    )
+    return result.rowcount or 0
+
+
+async def set_notifications_enabled_for_site(
+    session: AsyncSession,
+    site_id: int,
+    *,
+    enabled: bool,
+) -> int:
+    result = await session.execute(
+        sa_update(Sensor)
+        .where(Sensor.site_id == site_id)
+        .values(notifications_enabled=enabled)
+    )
+    return result.rowcount or 0
+
+
+async def set_notifications_enabled_for_workshop(
+    session: AsyncSession,
+    workshop_id: int,
+    *,
+    enabled: bool,
+) -> int:
+    result = await session.execute(
+        sa_update(Sensor)
+        .where(
+            Sensor.site_id.in_(
+                select(Site.id).where(Site.workshop_id == workshop_id)
+            )
+        )
+        .values(notifications_enabled=enabled)
+    )
+    return result.rowcount or 0
 
 
 async def delete(session: AsyncSession, sensor: Sensor) -> None:
@@ -113,3 +187,13 @@ async def mark_stale_offline(
         .values(status=SensorStatus.offline)
     )
     return result.rowcount or 0
+
+
+async def set_status(
+    session: AsyncSession,
+    sensor_id: int,
+    status: SensorStatus,
+) -> None:
+    await session.execute(
+        sa_update(Sensor).where(Sensor.id == sensor_id).values(status=status)
+    )

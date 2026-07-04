@@ -121,3 +121,64 @@ async def test_ingest_accepts_batch(
     )
     assert response.status_code == 202
     assert response.json() == {"accepted": 2}
+
+
+@pytest.mark.asyncio
+async def test_ingest_duplicate_device_timestamp_updates_reading(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    test_sensor_token: tuple[int, str],
+) -> None:
+    from datetime import datetime
+
+    from app.services.sensor_status import is_sensor_online
+
+    sensor_id, token = test_sensor_token
+    fixed_ts = "2026-06-01T12:00:00Z"
+
+    for current in (1.0, 2.0):
+        response = await client.post(
+            "/api/v1/ingest",
+            headers={"X-Device-Token": token},
+            json={"current_a": current, "ts": fixed_ts},
+        )
+        assert response.status_code == 202
+
+    row = await db_session.execute(
+        select(Reading).where(
+            Reading.sensor_id == sensor_id,
+            Reading.time == datetime.fromisoformat("2026-06-01T12:00:00+00:00"),
+        )
+    )
+    reading = row.scalar_one()
+    assert reading.current_a == pytest.approx(2.0)
+
+    sensor_result = await db_session.execute(select(Sensor).where(Sensor.id == sensor_id))
+    sensor = sensor_result.scalar_one()
+    assert is_sensor_online(sensor) is True
+
+
+@pytest.mark.asyncio
+async def test_ingest_stale_device_timestamp_uses_server_time(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    test_sensor_token: tuple[int, str],
+) -> None:
+    from datetime import UTC, datetime
+
+    sensor_id, token = test_sensor_token
+    response = await client.post(
+        "/api/v1/ingest",
+        headers={"X-Device-Token": token},
+        json={"current_a": 3.3, "ts": "1970-01-01T00:00:00Z"},
+    )
+    assert response.status_code == 202
+
+    row = await db_session.execute(
+        select(Reading)
+        .where(Reading.sensor_id == sensor_id)
+        .order_by(Reading.time.desc())
+        .limit(1)
+    )
+    reading = row.scalar_one()
+    assert reading.time >= datetime(2024, 1, 1, tzinfo=UTC)

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -20,6 +21,18 @@ class ChartSeriesData {
   int get pointCount => segments.fold<int>(0, (sum, seg) => sum + seg.length);
 }
 
+class ChartDowntimeBand {
+  const ChartDowntimeBand({
+    required this.start,
+    required this.end,
+    required this.type,
+  });
+
+  final DateTime start;
+  final DateTime end;
+  final String type;
+}
+
 class CurrentChart extends StatefulWidget {
   const CurrentChart({
     super.key,
@@ -27,14 +40,18 @@ class CurrentChart extends StatefulWidget {
     required this.scale,
     required this.rangeStart,
     required this.rangeEnd,
+    this.downtimeBands = const [],
     this.onVisibleRangeChanged,
+    this.onScaleWheel,
   });
 
   final List<ChartSeriesData> series;
   final ChartScale scale;
   final DateTime rangeStart;
   final DateTime rangeEnd;
+  final List<ChartDowntimeBand> downtimeBands;
   final void Function(DateTime start, DateTime end)? onVisibleRangeChanged;
+  final ValueChanged<ChartScale>? onScaleWheel;
 
   static const _palette = [
     Color(0xFF00D4AA),
@@ -63,7 +80,7 @@ class _CurrentChartState extends State<CurrentChart> {
     _zoomPanBehavior = ZoomPanBehavior(
       enablePinching: true,
       enablePanning: true,
-      enableMouseWheelZooming: true,
+      enableMouseWheelZooming: false,
       enableSelectionZooming: true,
       zoomMode: ZoomMode.x,
     );
@@ -109,7 +126,17 @@ class _CurrentChartState extends State<CurrentChart> {
     final axisMin = _axisMinimum();
     final axisMax = _axisMaximum();
 
-    return SfCartesianChart(
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerSignal: (event) {
+        if (event is PointerScrollEvent && widget.onScaleWheel != null) {
+          final next = widget.scale.adjustByWheelDelta(event.scrollDelta.dy);
+          if (next != widget.scale) {
+            widget.onScaleWheel!(next);
+          }
+        }
+      },
+      child: SfCartesianChart(
       onActualRangeChanged: _onActualRangeChanged,
       onZoomEnd: _onZoomEnd,
       plotAreaBorderWidth: 0,
@@ -125,6 +152,17 @@ class _CurrentChartState extends State<CurrentChart> {
       primaryXAxis: DateTimeAxis(
         minimum: axisMin,
         maximum: axisMax,
+        plotBands: [
+          for (final band in widget.downtimeBands)
+            PlotBand(
+              start: band.start,
+              end: band.end,
+              color: band.type == 'offline'
+                  ? Colors.red.withValues(alpha: 0.12)
+                  : Colors.orange.withValues(alpha: 0.12),
+              borderWidth: 0,
+            ),
+        ],
         majorGridLines:
             MajorGridLines(color: Colors.white.withValues(alpha: 0.06)),
         axisLine: AxisLine(color: Colors.white.withValues(alpha: 0.12)),
@@ -179,6 +217,7 @@ class _CurrentChartState extends State<CurrentChart> {
             ),
           ],
       ],
+    ),
     );
   }
 

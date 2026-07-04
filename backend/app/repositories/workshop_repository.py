@@ -14,8 +14,8 @@ async def get_by_id(session: AsyncSession, workshop_id: int) -> Workshop | None:
     return result.scalar_one_or_none()
 
 
-async def create(session: AsyncSession, name: str) -> Workshop:
-    workshop = Workshop(name=name)
+async def create(session: AsyncSession, name: str, color: str | None = None) -> Workshop:
+    workshop = Workshop(name=name, color=color)
     session.add(workshop)
     await session.flush()
     return workshop
@@ -26,9 +26,18 @@ async def update(
     workshop: Workshop,
     *,
     name: str | None = None,
+    color: str | None = None,
+    clear_color: bool = False,
+    notifications_enabled: bool | None = None,
 ) -> Workshop:
     if name is not None:
         workshop.name = name
+    if clear_color:
+        workshop.color = None
+    elif color is not None:
+        workshop.color = color
+    if notifications_enabled is not None:
+        workshop.notifications_enabled = notifications_enabled
     await session.flush()
     return workshop
 

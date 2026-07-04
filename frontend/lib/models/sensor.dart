@@ -6,10 +6,17 @@ class Sensor {
     required this.siteId,
     required this.status,
     required this.lastSeen,
+    this.color,
+    this.idlePowerThresholdW,
+    this.idleCurrentThresholdA,
+    this.idleDurationSeconds,
+    this.notificationsEnabled = true,
+    this.createdAt,
   });
 
   factory Sensor.fromJson(Map<String, dynamic> json) {
     final lastSeenRaw = json['last_seen'];
+    final createdAtRaw = json['created_at'];
     return Sensor(
       id: json['id'] as int,
       name: json['name'] as String,
@@ -17,6 +24,15 @@ class Sensor {
       siteId: json['site_id'] as int?,
       status: json['status'] as String,
       lastSeen: lastSeenRaw == null ? null : DateTime.parse(lastSeenRaw as String),
+      color: json['color'] as String?,
+      idlePowerThresholdW: (json['idle_power_threshold_w'] as num?)?.toDouble(),
+      idleCurrentThresholdA:
+          (json['idle_current_threshold_a'] as num?)?.toDouble(),
+      idleDurationSeconds: json['idle_duration_seconds'] as int?,
+      notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
+      createdAt: createdAtRaw == null
+          ? null
+          : DateTime.parse(createdAtRaw as String),
     );
   }
 
@@ -26,8 +42,89 @@ class Sensor {
   final int? siteId;
   final String status;
   final DateTime? lastSeen;
+  final String? color;
+  final double? idlePowerThresholdW;
+  final double? idleCurrentThresholdA;
+  final int? idleDurationSeconds;
+  final bool notificationsEnabled;
+  final DateTime? createdAt;
 
   bool get isOnline => status == 'online';
+}
+
+class SensorPlacementRecord {
+  const SensorPlacementRecord({
+    this.siteId,
+    this.siteName,
+    this.workshopId,
+    this.workshopName,
+    required this.assignedAt,
+    this.assignedByLogin,
+  });
+
+  factory SensorPlacementRecord.fromJson(Map<String, dynamic> json) {
+    return SensorPlacementRecord(
+      siteId: json['site_id'] as int?,
+      siteName: json['site_name'] as String?,
+      workshopId: json['workshop_id'] as int?,
+      workshopName: json['workshop_name'] as String?,
+      assignedAt: DateTime.parse(json['assigned_at'] as String),
+      assignedByLogin: json['assigned_by_login'] as String?,
+    );
+  }
+
+  final int? siteId;
+  final String? siteName;
+  final int? workshopId;
+  final String? workshopName;
+  final DateTime assignedAt;
+  final String? assignedByLogin;
+}
+
+class SensorAuditInfo {
+  const SensorAuditInfo({
+    required this.id,
+    required this.name,
+    required this.deviceId,
+    required this.createdAt,
+    this.createdByLogin,
+    this.currentSiteId,
+    this.currentSiteName,
+    this.currentWorkshopId,
+    this.currentWorkshopName,
+    this.color,
+    required this.placementHistory,
+  });
+
+  factory SensorAuditInfo.fromJson(Map<String, dynamic> json) {
+    return SensorAuditInfo(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      deviceId: json['device_id'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      createdByLogin: json['created_by_login'] as String?,
+      currentSiteId: json['current_site_id'] as int?,
+      currentSiteName: json['current_site_name'] as String?,
+      currentWorkshopId: json['current_workshop_id'] as int?,
+      currentWorkshopName: json['current_workshop_name'] as String?,
+      color: json['color'] as String?,
+      placementHistory: (json['placement_history'] as List<dynamic>? ?? [])
+          .map((e) => SensorPlacementRecord.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  final int id;
+  final String name;
+  final String deviceId;
+  final DateTime createdAt;
+  final String? createdByLogin;
+  final int? currentSiteId;
+  final String? currentSiteName;
+  final int? currentWorkshopId;
+  final String? currentWorkshopName;
+  final String? color;
+  final List<SensorPlacementRecord> placementHistory;
 }
 
 class ProvisioningCredentials {

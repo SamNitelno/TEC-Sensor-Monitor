@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.repositories import site_repository, workshop_repository
+from app.repositories import sensor_repository, site_repository, workshop_repository
 from app.schemas.site import SiteCreate, SiteResponse, SiteUpdate
 
 
@@ -11,7 +11,14 @@ def _to_response(site) -> SiteResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Site {site.id} has no workshop assigned",
         )
-    return SiteResponse(id=site.id, name=site.name, workshop_id=site.workshop_id)
+    return SiteResponse(
+        id=site.id,
+        name=site.name,
+        workshop_id=site.workshop_id,
+        color=site.color,
+        notifications_enabled=site.notifications_enabled,
+        created_at=site.created_at,
+    )
 
 
 async def list_sites(
@@ -26,7 +33,9 @@ async def create_site(session: AsyncSession, payload: SiteCreate) -> SiteRespons
     workshop = await workshop_repository.get_by_id(session, payload.workshop_id)
     if workshop is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workshop not found")
-    site = await site_repository.create(session, payload.name, payload.workshop_id)
+    site = await site_repository.create(
+        session, payload.name, payload.workshop_id, color=payload.color
+    )
     await session.commit()
     await session.refresh(site)
     return _to_response(site)
@@ -45,7 +54,16 @@ async def update_site(session: AsyncSession, site_id: int, payload: SiteUpdate) 
         site,
         name=payload.name,
         workshop_id=payload.workshop_id,
+        color=payload.color,
+        clear_color=payload.clear_color,
+        notifications_enabled=payload.notifications_enabled,
     )
+    if payload.notifications_enabled is not None:
+        await sensor_repository.set_notifications_enabled_for_site(
+            session,
+            site_id,
+            enabled=payload.notifications_enabled,
+        )
     await session.commit()
     await session.refresh(site)
     return _to_response(site)
@@ -57,3 +75,20 @@ async def delete_site(session: AsyncSession, site_id: int) -> None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
     await site_repository.delete(session, site)
     await session.commit()
+
+
+async def set_all_notifications_enabled(
+    session: AsyncSession,
+    *,
+    enabled: bool,
+) -> int:
+    sites = await site_repository.list_all(session)
+    for site in sites:
+        site.notifications_enabled = enabled
+        await sensor_repository.set_notifications_enabled_for_site(
+            session,
+            site.id,
+            enabled=enabled,
+        )
+    await session.commit()
+    return len(sites)

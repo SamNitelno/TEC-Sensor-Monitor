@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
+import 'package:tek_sensor_monitor/features/notifications/notifications_panel.dart';
 import 'package:tek_sensor_monitor/features/provisioning/ble_platform.dart';
 
 class AppShell extends ConsumerWidget {
@@ -31,12 +32,22 @@ class AppShell extends ConsumerWidget {
           icon: Icon(Icons.account_tree),
           label: 'Группы',
         ),
+      if (isAdmin)
+        const NavigationDestination(
+          icon: Icon(Icons.group),
+          label: 'Пользователи',
+        ),
+      const NavigationDestination(
+        icon: Icon(Icons.settings),
+        label: 'Настройки',
+      ),
     ];
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('ТЭК · Мониторинг датчиков'),
         actions: [
+          const NotificationBellButton(),
           if (isAdmin && isBleProvisioningSupported)
             IconButton(
               tooltip: 'Привязка ESP по BLE',
@@ -45,19 +56,14 @@ class AppShell extends ConsumerWidget {
             ),
           if (auth != null)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.only(right: 12),
               child: Center(
                 child: Text(
-                  '${auth.login} · ${auth.role}',
+                  auth.login,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
             ),
-          IconButton(
-            tooltip: 'Выйти',
-            onPressed: () => ref.read(authProvider.notifier).logout(),
-            icon: const Icon(Icons.logout),
-          ),
         ],
       ),
       body: child,
@@ -65,13 +71,9 @@ class AppShell extends ConsumerWidget {
           ? NavigationBar(
               selectedIndex: _indexForPath(location, isAdmin),
               onDestinationSelected: (index) {
-                switch (index) {
-                  case 0:
-                    context.go('/');
-                  case 1:
-                    if (isAdmin) context.go('/sensors');
-                  case 2:
-                    if (isAdmin) context.go('/groups');
+                final routes = _routesForAdmin(isAdmin);
+                if (index < routes.length) {
+                  context.go(routes[index]);
                 }
               },
               destinations: destinations,
@@ -80,10 +82,30 @@ class AppShell extends ConsumerWidget {
     );
   }
 
+  List<String> _routesForAdmin(bool isAdmin) {
+    return [
+      '/',
+      if (isAdmin) '/sensors',
+      if (isAdmin) '/groups',
+      if (isAdmin) '/users',
+      '/settings',
+    ];
+  }
+
   int _indexForPath(String path, bool isAdmin) {
-    if (!isAdmin) return 0;
-    if (path.startsWith('/sensors')) return 1;
-    if (path.startsWith('/groups')) return 2;
+    final routes = _routesForAdmin(isAdmin);
+    if (path.startsWith('/sensors')) {
+      return routes.indexOf('/sensors').clamp(0, routes.length - 1);
+    }
+    if (path.startsWith('/groups')) {
+      return routes.indexOf('/groups').clamp(0, routes.length - 1);
+    }
+    if (path.startsWith('/users')) {
+      return routes.indexOf('/users').clamp(0, routes.length - 1);
+    }
+    if (path.startsWith('/settings')) {
+      return routes.indexOf('/settings').clamp(0, routes.length - 1);
+    }
     return 0;
   }
 }

@@ -51,16 +51,20 @@ async def get_current_user(
             detail="Invalid or expired token",
         ) from exc
 
+    user_id = payload.get("uid")
     login = payload.get("sub")
-    if not login:
+    if user_id is not None:
+        result = await db.execute(select(User).where(User.id == user_id))
+    elif login:
+        result = await db.execute(select(User).where(User.login == login))
+    else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
 
-    result = await db.execute(select(User).where(User.login == login))
     user = result.scalar_one_or_none()
-    if user is None:
+    if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",

@@ -3,10 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/core/app_shell.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/auth/login_screen.dart';
+import 'package:tek_sensor_monitor/features/auth/register_screen.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_screen.dart';
 import 'package:tek_sensor_monitor/features/groups/groups_screen.dart';
 import 'package:tek_sensor_monitor/features/provisioning/provisioning_screen.dart';
 import 'package:tek_sensor_monitor/features/sensors/sensors_screen.dart';
+import 'package:tek_sensor_monitor/features/settings/settings_screen.dart';
+import 'package:tek_sensor_monitor/features/users/users_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
@@ -14,28 +17,30 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
-      final loggingIn = state.uri.path == '/login';
+      final path = state.uri.path;
+      final isAuthRoute = path == '/login' || path == '/register';
       final session = auth.valueOrNull;
       final isReady = !auth.isLoading;
 
       if (!isReady) {
         return null;
       }
-      if (session == null && !loggingIn) {
+      if (session == null && !isAuthRoute) {
         return '/login';
       }
-      if (session != null && loggingIn) {
+      if (session != null && isAuthRoute) {
         return '/';
       }
-      if (state.uri.path == '/sensors' || state.uri.path == '/groups') {
+      if (path == '/sensors' ||
+          path == '/groups' ||
+          path == '/users' ||
+          path == '/provisioning') {
         if (session != null && !session.isAdmin) {
           return '/';
         }
       }
-      if (state.uri.path == '/provisioning') {
-        if (session != null && !session.isAdmin) {
-          return '/';
-        }
+      if (path == '/settings' && session == null) {
+        return '/login';
       }
       return null;
     },
@@ -43,6 +48,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
@@ -58,6 +67,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/groups',
             builder: (context, state) => const GroupsScreen(),
+          ),
+          GoRoute(
+            path: '/users',
+            builder: (context, state) => const UsersScreen(),
+          ),
+          GoRoute(
+            path: '/settings',
+            builder: (context, state) => const SettingsScreen(),
           ),
         ],
       ),

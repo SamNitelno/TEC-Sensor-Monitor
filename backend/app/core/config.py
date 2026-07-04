@@ -12,8 +12,12 @@ class Settings(BaseSettings):
     api_public_base_url: str = "http://localhost:8000"
     viewer_login: str = "viewer"
     viewer_password: str = "viewer"
-    sensor_offline_threshold_seconds: int = 25
-    sensor_offline_check_interval_seconds: int = 5
+    sensor_offline_threshold_seconds: int = 15
+    downtime_worker_interval_seconds: int = 30
+    default_idle_power_threshold_w: float = 50.0
+    default_idle_current_threshold_a: float = 0.5
+    default_idle_duration_seconds: int = 60
+    downtime_smoothing_samples: int = 5
 
 
 settings = Settings()

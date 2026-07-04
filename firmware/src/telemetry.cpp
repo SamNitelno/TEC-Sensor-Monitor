@@ -11,29 +11,33 @@
 
 namespace {
 constexpr uint8_t kMaxPostAttempts = 3;
-constexpr uint32_t kNtpWaitMs = 15000;
+// Unix time for 2024-01-01T00:00:00Z — reject SNTP-invalid clocks for telemetry ts.
+constexpr time_t kMinValidUnixTime = 1704067200;
 
-String iso8601UtcNow() {
-  struct tm timeInfo {};
-  if (!getLocalTime(&timeInfo, 500)) {
-    return "";
-  }
-  char buffer[32];
-  strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", &timeInfo);
-  return String(buffer) + "Z";
+bool isTimeSynced() {
+  return time(nullptr) >= kMinValidUnixTime;
 }
 
-bool waitForTimeSync() {
-  const uint32_t started = millis();
-  struct tm timeInfo {};
-  while (millis() - started < kNtpWaitMs) {
-    if (getLocalTime(&timeInfo, 200) && timeInfo.tm_year + 1900 >= 2024) {
-      return true;
-    }
-    delay(200);
+String iso8601UtcNow() {
+  if (!isTimeSynced()) {
+    return "";
   }
-  Serial.println("NTP sync timeout — sending without timestamp");
-  return false;
+  const time_t now = time(nullptr);
+  struct tm timeInfo {};
+#if defined(ESP_PLATFORM)
+  const struct tm* tmPtr = gmtime(&now);
+  if (tmPtr == nullptr) {
+    return "";
+  }
+  timeInfo = *tmPtr;
+#else
+  if (gmtime_r(&now, &timeInfo) == nullptr) {
+    return "";
+  }
+#endif
+  char buffer[32];
+  strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &timeInfo);
+  return String(buffer);
 }
 
 bool postOnce(const DeviceConfig& config, float currentA, float powerW, bool sensorOk) {
@@ -95,20 +99,19 @@ void runTelemetryLoop(const DeviceConfig& config, CurrentSensor& sensor) {
   }
 
   Serial.printf("Telemetry target: %s\n", config.serverUrl.c_str());
-  waitForTimeSync();
 
   uint32_t lastSend = 0;
   while (true) {
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("Wi-Fi lost — reconnecting");
       connectWifi(config, 20000);
-      waitForTimeSync();
-      delay(1000);
+      configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+      lastSend = 0;
       continue;
     }
 
     const uint32_t now = millis();
-    if (now - lastSend >= kTelemetryIntervalMs) {
+    if (lastSend == 0 || now - lastSend >= kTelemetryIntervalMs) {
       lastSend = now;
       const float current = sensor.readCurrentA();
       const float power = sensor.readPowerW();

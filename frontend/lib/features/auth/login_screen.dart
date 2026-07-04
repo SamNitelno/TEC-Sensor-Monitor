@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -40,68 +41,89 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final auth = ref.watch(authProvider);
 
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Icon(Icons.electric_bolt, size: 48, color: theme.colorScheme.primary),
-                  const SizedBox(height: 16),
-                  Text(
-                    'ТЭК · Мониторинг',
-                    style: theme.textTheme.headlineMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Вход в систему мониторинга датчиков',
-                    style: theme.textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 28),
-                  TextField(
-                    controller: _loginController,
-                    decoration: const InputDecoration(
-                      labelText: 'Логин',
-                      border: OutlineInputBorder(),
-                    ),
-                    textInputAction: TextInputAction.next,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _passwordController,
-                    decoration: InputDecoration(
-                      labelText: 'Пароль',
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
-                        onPressed: () => setState(() => _obscure = !_obscure),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(28),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Icon(Icons.electric_bolt,
+                              size: 48, color: theme.colorScheme.primary),
+                          const SizedBox(height: 16),
+                          Text(
+                            'ТЭК · Мониторинг',
+                            style: theme.textTheme.headlineMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Вход в систему мониторинга датчиков',
+                            style: theme.textTheme.bodyMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 28),
+                          TextField(
+                            controller: _loginController,
+                            decoration: const InputDecoration(
+                              labelText: 'Логин',
+                              border: OutlineInputBorder(),
+                            ),
+                            textInputAction: TextInputAction.next,
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _passwordController,
+                            decoration: InputDecoration(
+                              labelText: 'Пароль',
+                              border: const OutlineInputBorder(),
+                              suffixIcon: IconButton(
+                                icon: Icon(_obscure
+                                    ? Icons.visibility
+                                    : Icons.visibility_off),
+                                onPressed: () =>
+                                    setState(() => _obscure = !_obscure),
+                              ),
+                            ),
+                            obscureText: _obscure,
+                            onSubmitted: (_) => _submit(),
+                          ),
+                          const SizedBox(height: 24),
+                          FilledButton(
+                            onPressed: auth.isLoading ? null : _submit,
+                            child: auth.isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Text('Войти'),
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: () => context.go('/register'),
+                            child:
+                                const Text('Нет аккаунта? Зарегистрироваться'),
+                          ),
+                        ],
                       ),
                     ),
-                    obscureText: _obscure,
-                    onSubmitted: (_) => _submit(),
                   ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: auth.isLoading ? null : _submit,
-                    child: auth.isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Войти'),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_admin, require_viewer
 from app.db.session import get_db
 from app.models.user import User
+from app.schemas.notification_prefs import BulkNotificationsRequest, BulkNotificationsResponse
 from app.schemas.site import SiteCreate, SiteResponse, SiteUpdate
 from app.services import site_service
 
@@ -19,6 +20,18 @@ async def list_sites(
     workshop_id: Annotated[int | None, Query()] = None,
 ) -> list[SiteResponse]:
     return await site_service.list_sites(db, workshop_id=workshop_id)
+
+
+@router.post("/notifications/bulk", response_model=BulkNotificationsResponse)
+async def bulk_notifications(
+    payload: BulkNotificationsRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_admin)],
+) -> BulkNotificationsResponse:
+    updated = await site_service.set_all_notifications_enabled(
+        db, enabled=payload.enabled
+    )
+    return BulkNotificationsResponse(updated=updated)
 
 
 @router.post("", response_model=SiteResponse, status_code=status.HTTP_201_CREATED)

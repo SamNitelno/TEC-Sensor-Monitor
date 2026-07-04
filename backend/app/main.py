@@ -5,16 +5,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.session import async_session_factory
-from app.routers import auth, ingest, readings, sensors, sites, workshops
+from app.routers import auth, downtime, ingest, notifications, readings, sensors, sites, users, workshops
 from app.services.admin_bootstrap import ensure_admin_user
-from app.services.offline_sensor_service import offline_watchdog_loop
+from app.services.downtime_detection_service import downtime_worker_loop
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with async_session_factory() as session:
         await ensure_admin_user(session)
-    watchdog_task = asyncio.create_task(offline_watchdog_loop())
+    watchdog_task = asyncio.create_task(downtime_worker_loop())
     try:
         yield
     finally:
@@ -41,9 +41,12 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")
+app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(ingest.router, prefix="/api/v1")
 app.include_router(sensors.router, prefix="/api/v1")
 app.include_router(readings.router, prefix="/api/v1")
+app.include_router(downtime.router, prefix="/api/v1")
 app.include_router(sites.router, prefix="/api/v1")
 app.include_router(workshops.router, prefix="/api/v1")
 

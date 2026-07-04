@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:tek_sensor_monitor/core/api_config.dart';
 import 'package:tek_sensor_monitor/models/auth_session.dart';
+import 'package:tek_sensor_monitor/models/notification.dart';
+import 'package:tek_sensor_monitor/models/downtime.dart';
 import 'package:tek_sensor_monitor/models/reading_point.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
+import 'package:tek_sensor_monitor/models/user.dart';
 
 typedef TokenGetter = String? Function();
 
@@ -49,6 +52,156 @@ class ApiClient {
     );
   }
 
+  Future<AuthSession> register(String login, String password) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/auth/register',
+      data: {'login': login, 'password': password},
+    );
+    final data = response.data ?? {};
+    return AuthSession(
+      token: data['access_token'] as String,
+      role: data['role'] as String,
+      login: login,
+    );
+  }
+
+  Future<bool> checkLoginAvailable(String login) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/auth/check-login',
+      queryParameters: {'login': login},
+    );
+    return response.data?['available'] as bool? ?? false;
+  }
+
+  Future<UserProfile> fetchProfile() async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/v1/auth/me');
+    return UserProfile.fromJson(response.data ?? {});
+  }
+
+  Future<ProfileUpdateResult> updateProfile({
+    String? login,
+    String? email,
+    bool clearEmail = false,
+    String? phone,
+    bool clearPhone = false,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/api/v1/auth/me',
+      data: {
+        if (login != null) 'login': login,
+        if (email != null) 'email': email,
+        if (clearEmail) 'clear_email': true,
+        if (phone != null) 'phone': phone,
+        if (clearPhone) 'clear_phone': true,
+      },
+    );
+    return ProfileUpdateResult.fromJson(response.data ?? {});
+  }
+
+  Future<UserProfile> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/auth/me/password',
+      data: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
+    return UserProfile.fromJson(response.data ?? {});
+  }
+
+  Future<List<UserListItem>> fetchUsers() async {
+    final response = await _dio.get<List<dynamic>>('/api/v1/users');
+    return (response.data ?? [])
+        .map((item) => UserListItem.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<UserListItem> promoteUser(int userId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/users/$userId/promote',
+    );
+    return UserListItem.fromJson(
+      (response.data ?? {})['user'] as Map<String, dynamic>,
+    );
+  }
+
+  Future<UserListItem> demoteUser(int userId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/users/$userId/demote',
+    );
+    return UserListItem.fromJson(
+      (response.data ?? {})['user'] as Map<String, dynamic>,
+    );
+  }
+
+  Future<SensorAuditInfo> fetchSensorAudit(int sensorId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/sensors/$sensorId/audit',
+    );
+    return SensorAuditInfo.fromJson(response.data ?? {});
+  }
+
+  Future<List<AppNotification>> fetchNotifications() async {
+    final response = await _dio.get<List<dynamic>>('/api/v1/notifications');
+    return (response.data ?? [])
+        .map((item) => AppNotification.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> acknowledgeNotification(int id) async {
+    await _dio.post<void>('/api/v1/notifications/$id/ack');
+  }
+
+  Future<int> fetchUnreadNotificationCount() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/notifications/unread-count',
+    );
+    return (response.data?['count'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<int> acknowledgeAllNotifications() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/notifications/ack-all',
+    );
+    return (response.data?['acknowledged'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<int> setAllSensorNotifications({required bool enabled}) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/sensors/notifications/bulk',
+      data: {'enabled': enabled},
+    );
+    return (response.data?['updated'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<int> setAllWorkshopNotifications({required bool enabled}) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/workshops/notifications/bulk',
+      data: {'enabled': enabled},
+    );
+    return (response.data?['updated'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<int> setAllSiteNotifications({required bool enabled}) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/sites/notifications/bulk',
+      data: {'enabled': enabled},
+    );
+    return (response.data?['updated'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<Map<String, int>> seedDemoReadings() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/sensors/seed-demo-readings',
+    );
+    return (response.data ?? {}).map(
+      (key, value) => MapEntry(key, (value as num).toInt()),
+    );
+  }
+
   Future<List<Sensor>> fetchSensors({
     int? siteId,
     int? workshopId,
@@ -69,6 +222,7 @@ class ApiClient {
     required String name,
     required String deviceId,
     int? siteId,
+    String? color,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/v1/sensors',
@@ -76,6 +230,7 @@ class ApiClient {
         'name': name,
         'device_id': deviceId,
         if (siteId != null) 'site_id': siteId,
+        if (color != null) 'color': color,
       },
     );
     return SensorCreateResult.fromJson(response.data ?? {});
@@ -86,6 +241,15 @@ class ApiClient {
     String? name,
     int? siteId,
     bool clearSite = false,
+    String? color,
+    bool clearColor = false,
+    double? idlePowerThresholdW,
+    bool clearIdlePowerThreshold = false,
+    double? idleCurrentThresholdA,
+    bool clearIdleCurrentThreshold = false,
+    int? idleDurationSeconds,
+    bool clearIdleDuration = false,
+    bool? notificationsEnabled,
   }) async {
     final response = await _dio.patch<Map<String, dynamic>>(
       '/api/v1/sensors/$id',
@@ -93,6 +257,19 @@ class ApiClient {
         if (name != null) 'name': name,
         if (clearSite) 'site_id': null,
         if (!clearSite && siteId != null) 'site_id': siteId,
+        if (color != null) 'color': color,
+        if (clearColor) 'clear_color': true,
+        if (idlePowerThresholdW != null)
+          'idle_power_threshold_w': idlePowerThresholdW,
+        if (clearIdlePowerThreshold) 'clear_idle_power_threshold': true,
+        if (idleCurrentThresholdA != null)
+          'idle_current_threshold_a': idleCurrentThresholdA,
+        if (clearIdleCurrentThreshold) 'clear_idle_current_threshold': true,
+        if (idleDurationSeconds != null)
+          'idle_duration_seconds': idleDurationSeconds,
+        if (clearIdleDuration) 'clear_idle_duration': true,
+        if (notificationsEnabled != null)
+          'notifications_enabled': notificationsEnabled,
       },
     );
     return Sensor.fromJson(response.data ?? {});
@@ -127,10 +304,37 @@ class ApiClient {
   Future<Site> createSite({
     required String name,
     required int workshopId,
+    String? color,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/v1/sites',
-      data: {'name': name, 'workshop_id': workshopId},
+      data: {
+        'name': name,
+        'workshop_id': workshopId,
+        if (color != null) 'color': color,
+      },
+    );
+    return Site.fromJson(response.data ?? {});
+  }
+
+  Future<Site> updateSite(
+    int id, {
+    String? name,
+    int? workshopId,
+    String? color,
+    bool clearColor = false,
+    bool? notificationsEnabled,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/api/v1/sites/$id',
+      data: {
+        if (name != null) 'name': name,
+        if (workshopId != null) 'workshop_id': workshopId,
+        if (color != null) 'color': color,
+        if (clearColor) 'clear_color': true,
+        if (notificationsEnabled != null)
+          'notifications_enabled': notificationsEnabled,
+      },
     );
     return Site.fromJson(response.data ?? {});
   }
@@ -146,10 +350,36 @@ class ApiClient {
         .toList();
   }
 
-  Future<Workshop> createWorkshop({required String name}) async {
+  Future<Workshop> createWorkshop({
+    required String name,
+    String? color,
+  }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/v1/workshops',
-      data: {'name': name},
+      data: {
+        'name': name,
+        if (color != null) 'color': color,
+      },
+    );
+    return Workshop.fromJson(response.data ?? {});
+  }
+
+  Future<Workshop> updateWorkshop(
+    int id, {
+    String? name,
+    String? color,
+    bool clearColor = false,
+    bool? notificationsEnabled,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/api/v1/workshops/$id',
+      data: {
+        if (name != null) 'name': name,
+        if (color != null) 'color': color,
+        if (clearColor) 'clear_color': true,
+        if (notificationsEnabled != null)
+          'notifications_enabled': notificationsEnabled,
+      },
     );
     return Workshop.fromJson(response.data ?? {});
   }
@@ -180,5 +410,50 @@ class ApiClient {
       queryParameters: query,
     );
     return GroupedReadingsResponse.fromJson(response.data ?? {});
+  }
+
+  Future<List<DowntimeEvent>> fetchDowntimeEvents({
+    required DateTime from,
+    required DateTime to,
+    int? sensorId,
+    int? siteId,
+    int? workshopId,
+    String? type,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/downtime/events',
+      queryParameters: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+        if (sensorId != null) 'sensor_id': sensorId,
+        if (siteId != null) 'site_id': siteId,
+        if (workshopId != null) 'workshop_id': workshopId,
+        if (type != null) 'type': type,
+      },
+    );
+    final events = response.data?['events'] as List<dynamic>? ?? [];
+    return events
+        .map((e) => DowntimeEvent.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<DowntimeSummary> fetchDowntimeSummary({
+    required DateTime from,
+    required DateTime to,
+    int? sensorId,
+    int? siteId,
+    int? workshopId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/downtime/summary',
+      queryParameters: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+        if (sensorId != null) 'sensor_id': sensorId,
+        if (siteId != null) 'site_id': siteId,
+        if (workshopId != null) 'workshop_id': workshopId,
+      },
+    );
+    return DowntimeSummary.fromJson(response.data ?? {});
   }
 }
