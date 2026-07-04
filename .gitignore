@@ -10,3 +10,4 @@ frontend/build/
 CONTEXT.md
 .cursor/
 firmware/src/secrets.h
+firmware/.pio/

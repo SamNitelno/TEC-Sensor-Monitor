@@ -1,0 +1,2 @@
+# PlatformIO build cache and downloaded libraries — not project source.
+firmware/.pio/** linguist-vendored
