@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 enum TimeRangePreset {
+  minute('Мин', Duration(minutes: 1)),
   hour('Час', Duration(hours: 1)),
   day('День', Duration(days: 1)),
   week('Неделя', Duration(days: 7)),

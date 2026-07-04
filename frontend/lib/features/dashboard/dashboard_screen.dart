@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/features/dashboard/chart_series_utils.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
 import 'package:tek_sensor_monitor/models/reading_point.dart';
@@ -282,7 +283,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ChartSeriesData(
                   sensorId: chartSeries[i].sensorId,
                   sensorName: chartSeries[i].sensorName,
-                  points: chartSeries[i].points,
+                  segments: splitPointsAtGaps(
+                    chartSeries[i].points,
+                    gapThresholdForScale(scale),
+                  ),
                   color: CurrentChart.colorForIndex(i),
                 ),
             ],

@@ -11,7 +11,7 @@
 
 namespace {
 constexpr uint8_t kMaxPostAttempts = 3;
-constexpr uint8_t kFailuresBeforeWifiReset = 5;
+constexpr uint32_t kNtpWaitMs = 15000;
 
 String iso8601UtcNow() {
   struct tm timeInfo {};
@@ -21,6 +21,19 @@ String iso8601UtcNow() {
   char buffer[32];
   strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", &timeInfo);
   return String(buffer) + "Z";
+}
+
+bool waitForTimeSync() {
+  const uint32_t started = millis();
+  struct tm timeInfo {};
+  while (millis() - started < kNtpWaitMs) {
+    if (getLocalTime(&timeInfo, 200) && timeInfo.tm_year + 1900 >= 2024) {
+      return true;
+    }
+    delay(200);
+  }
+  Serial.println("NTP sync timeout — sending without timestamp");
+  return false;
 }
 
 bool postOnce(const DeviceConfig& config, float currentA, float powerW, bool sensorOk) {
@@ -72,13 +85,6 @@ bool sendReading(const DeviceConfig& config, float currentA, float powerW, bool 
   }
   return false;
 }
-
-void resetWifiLink(const DeviceConfig& config) {
-  Serial.printf("Resetting Wi-Fi (IP was %s)\n", WiFi.localIP().toString().c_str());
-  WiFi.disconnect(false);
-  delay(250);
-  connectWifi(config, 20000);
-}
 }  // namespace
 
 void runTelemetryLoop(const DeviceConfig& config, CurrentSensor& sensor) {
@@ -88,11 +94,15 @@ void runTelemetryLoop(const DeviceConfig& config, CurrentSensor& sensor) {
     Serial.println("Sensor init failed — will retry in loop");
   }
 
+  Serial.printf("Telemetry target: %s\n", config.serverUrl.c_str());
+  waitForTimeSync();
+
   uint32_t lastSend = 0;
-  uint8_t sendFailures = 0;
   while (true) {
     if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("Wi-Fi lost — reconnecting");
       connectWifi(config, 20000);
+      waitForTimeSync();
       delay(1000);
       continue;
     }
@@ -105,14 +115,8 @@ void runTelemetryLoop(const DeviceConfig& config, CurrentSensor& sensor) {
       const bool sensorOk = sensor.ok();
       Serial.printf("[CAL] I=%.4f A P=%.1f W ok=%d scale=%.4f\n",
                     current, power, sensorOk ? 1 : 0, CURRENT_SCALE);
-      if (sendReading(config, current, power, sensorOk)) {
-        sendFailures = 0;
-      } else {
-        sendFailures++;
-        if (sendFailures >= kFailuresBeforeWifiReset) {
-          resetWifiLink(config);
-          sendFailures = 0;
-        }
+      if (!sendReading(config, current, power, sensorOk)) {
+        Serial.println("Telemetry POST failed — will retry (Wi-Fi stays up)");
       }
     }
     delay(50);

@@ -49,7 +49,7 @@ final siteFilterProvider = StateProvider<int?>((ref) => null);
 final selectedSensorIdsProvider = StateProvider<Set<int>>((ref) => {});
 
 final timeRangePresetProvider =
-    StateProvider<TimeRangePreset>((ref) => TimeRangePreset.hour);
+    StateProvider<TimeRangePreset>((ref) => TimeRangePreset.minute);
 
 final customTimeRangeProvider = StateProvider<TimeRange?>((ref) => null);
 
@@ -121,6 +121,7 @@ ChartScale chartScaleForVisibleSpan(Duration span) {
 
 ChartScale defaultChartScaleForPreset(TimeRangePreset preset) {
   return switch (preset) {
+    TimeRangePreset.minute => ChartScale.seconds,
     TimeRangePreset.hour => ChartScale.seconds,
     TimeRangePreset.day => ChartScale.minutes,
     TimeRangePreset.week => ChartScale.hours,
