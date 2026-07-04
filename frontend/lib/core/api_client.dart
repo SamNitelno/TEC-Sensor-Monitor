@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:tek_sensor_monitor/core/api_config.dart';
 import 'package:tek_sensor_monitor/models/auth_session.dart';
 import 'package:tek_sensor_monitor/models/notification.dart';
+import 'package:tek_sensor_monitor/models/contact_verification.dart';
 import 'package:tek_sensor_monitor/models/downtime.dart';
 import 'package:tek_sensor_monitor/models/reading_point.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
@@ -96,6 +97,48 @@ class ApiClient {
       },
     );
     return ProfileUpdateResult.fromJson(response.data ?? {});
+  }
+
+  Future<ContactSendCodesResult> sendContactVerificationCodes({
+    String? login,
+    String? email,
+    bool clearEmail = false,
+    String? phone,
+    bool clearPhone = false,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/auth/me/contact/send-codes',
+      data: {
+        if (login != null) 'login': login,
+        if (email != null) 'email': email,
+        if (clearEmail) 'clear_email': true,
+        if (phone != null) 'phone': phone,
+        if (clearPhone) 'clear_phone': true,
+      },
+    );
+    return ContactSendCodesResult.fromJson(response.data ?? {});
+  }
+
+  Future<ContactVerifyCodeResult> verifyContactEmail({
+    required String batchId,
+    required String code,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/auth/me/contact/verify-email',
+      data: {'batch_id': batchId, 'code': code},
+    );
+    return ContactVerifyCodeResult.fromJson(response.data ?? {});
+  }
+
+  Future<ContactVerifyCodeResult> verifyContactPhone({
+    required String batchId,
+    required String code,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/auth/me/contact/verify-phone',
+      data: {'batch_id': batchId, 'code': code},
+    );
+    return ContactVerifyCodeResult.fromJson(response.data ?? {});
   }
 
   Future<UserProfile> changePassword({

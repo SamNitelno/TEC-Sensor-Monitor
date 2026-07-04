@@ -33,6 +33,10 @@ class ChartTimeControlBar extends StatelessWidget {
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             selected: presetSelected && preset == p,
+            selectedColor: theme.colorScheme.secondaryContainer,
+            labelStyle: (presetSelected && preset == p)
+                ? theme.chipTheme.secondaryLabelStyle
+                : theme.chipTheme.labelStyle,
             onSelected: (_) => onPreset(p),
           ),
         ActionChip(

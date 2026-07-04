@@ -52,6 +52,36 @@ class ProfileUpdateRequest(BaseModel):
     clear_phone: bool = False
 
 
+class ContactSendCodesRequest(BaseModel):
+    login: str | None = Field(default=None, min_length=3, max_length=64)
+    email: str | None = Field(default=None, max_length=255)
+    clear_email: bool = False
+    phone: str | None = Field(default=None, max_length=32)
+    clear_phone: bool = False
+
+
+class ContactSendCodesResponse(BaseModel):
+    batch_id: str
+    step: str
+    destination_masked: str | None = None
+    message: str
+    profile: UserProfile | None = None
+    access_token: str | None = None
+
+
+class ContactVerifyCodeRequest(BaseModel):
+    batch_id: str
+    code: str = Field(min_length=4, max_length=8)
+
+
+class ContactVerifyCodeResponse(BaseModel):
+    step: str
+    destination_masked: str | None = None
+    message: str
+    profile: UserProfile | None = None
+    access_token: str | None = None
+
+
 class PasswordChangeRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)

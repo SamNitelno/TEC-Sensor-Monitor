@@ -1,6 +1,8 @@
 import pytest
 from httpx import AsyncClient
 
+from app.services.verification_delivery import get_test_code
+
 
 @pytest.mark.asyncio
 async def test_register_and_login(client: AsyncClient):
@@ -35,13 +37,23 @@ async def test_profile_update(client: AsyncClient, admin_token: str):
     assert me.status_code == 200
     assert me.json()["login"] == "admin"
 
-    updated = await client.patch(
-        "/api/v1/auth/me",
+    send = await client.post(
+        "/api/v1/auth/me/contact/send-codes",
         headers=headers,
-        json={"email": "admin@test.local", "phone": "+79990001122"},
+        json={"email": "admin@test.local"},
     )
-    assert updated.status_code == 200
-    assert updated.json()["email"] == "admin@test.local"
+    assert send.status_code == 200
+    batch_id = send.json()["batch_id"]
+    code = get_test_code("email", "admin@test.local")
+    assert code is not None
+
+    verified = await client.post(
+        "/api/v1/auth/me/contact/verify-email",
+        headers=headers,
+        json={"batch_id": batch_id, "code": code},
+    )
+    assert verified.status_code == 200
+    assert verified.json()["profile"]["email"] == "admin@test.local"
 
 
 @pytest.mark.asyncio

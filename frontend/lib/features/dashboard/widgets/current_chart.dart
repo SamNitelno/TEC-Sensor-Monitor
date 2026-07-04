@@ -200,7 +200,14 @@ class _CurrentChartState extends ConsumerState<CurrentChart> {
           ),
           decimalPlaces: 2,
         ),
-        tooltipBehavior: TooltipBehavior(enable: true),
+        tooltipBehavior: TooltipBehavior(
+          enable: true,
+          textStyle: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontSize: 12,
+          ),
+          color: theme.colorScheme.surfaceContainerHighest,
+        ),
         series: [
           for (final item in widget.series)
             for (var segIdx = 0; segIdx < item.segments.length; segIdx++) ...[

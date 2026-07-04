@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/core/password_validation.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
+import 'package:tek_sensor_monitor/features/settings/contact_verification_dialog.dart';
+import 'package:tek_sensor_monitor/models/notification.dart';
 import 'package:tek_sensor_monitor/models/user.dart';
 import 'package:tek_sensor_monitor/core/theme/app_theme.dart';
 import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
@@ -48,22 +50,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _saveProfile() async {
     setState(() => _savingProfile = true);
     try {
-      final result = await ref.read(apiClientProvider).updateProfile(
+      final api = ref.read(apiClientProvider);
+      final email = _emailController.text.trim();
+      final phone = _phoneController.text.trim();
+
+      final sendResult = await api.sendContactVerificationCodes(
         login: _loginController.text.trim(),
-        email: _emailController.text.trim().isEmpty
-            ? null
-            : _emailController.text.trim(),
-        clearEmail: _emailController.text.trim().isEmpty,
-        phone: _phoneController.text.trim().isEmpty
-            ? null
-            : _phoneController.text.trim(),
-        clearPhone: _phoneController.text.trim().isEmpty,
+        email: email.isEmpty ? null : email,
+        clearEmail: email.isEmpty,
+        phone: phone.isEmpty ? null : phone,
+        clearPhone: phone.isEmpty,
       );
-      await ref.read(authProvider.notifier).applyProfileUpdate(result);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Профиль сохранён')),
+
+      ProfileUpdateResult? updateResult;
+      if (sendResult.step == 'complete' && sendResult.profile != null) {
+        updateResult = ProfileUpdateResult(
+          profile: sendResult.profile!,
+          accessToken: sendResult.accessToken,
         );
+      } else if (mounted) {
+        updateResult = await ContactVerificationDialog.show(
+          context,
+          api: api,
+          start: sendResult,
+        );
+      }
+
+      if (updateResult != null) {
+        await ref.read(authProvider.notifier).applyProfileUpdate(updateResult);
+        ref.invalidate(profileProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(sendResult.message ?? 'Профиль сохранён')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -137,7 +157,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     Text('Профиль', style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 4),
-                    Text('Роль: ${profile.role}'),
+                    Text('Роль: ${profile.role}', style: Theme.of(context).textTheme.bodyMedium),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _loginController,
@@ -151,9 +171,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       controller: _emailController,
                       decoration: const InputDecoration(
                         labelText: 'Email',
-                        border: OutlineInputBorder(),
                         helperText:
-                            'Подтверждение по коду будет добавлено позже',
+                            'При изменении придёт код подтверждения на почту',
                       ),
                       keyboardType: TextInputType.emailAddress,
                     ),
@@ -162,7 +181,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       controller: _phoneController,
                       decoration: const InputDecoration(
                         labelText: 'Телефон',
-                        border: OutlineInputBorder(),
+                        helperText:
+                            'После email (если меняете оба) — код в SMS',
                       ),
                       keyboardType: TextInputType.phone,
                     ),

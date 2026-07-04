@@ -118,3 +118,38 @@ pio device monitor
 **Первичная прошивка** — USB-C (`pio run -t upload`). **BLE** — только для передачи Wi-Fi и токена после прошивки (приложение → Датчики → BLE).
 
 При первом запуске сверьте ток с эталонной нагрузкой (~2 кВт ≈ 9 А при 230 В). При постоянном расхождении задайте `CURRENT_SCALE` в `platformio.ini` (см. комментарий `esp32dev_jsy_scaled`).
+
+## Подтверждение email и телефона
+
+При привязке email или телефона в **Настройки → Профиль** система отправляет код подтверждения. Если меняются оба поля сразу, сначала подтверждается email, затем телефон (SMS).
+
+Настройка отправки — в `.env` (см. `.env.example`):
+
+| Переменная | Назначение |
+|------------|------------|
+| `VERIFICATION_SMTP_USER` | Почта отправителя |
+| `VERIFICATION_SMTP_PASSWORD` | Пароль приложения Gmail |
+| `VERIFICATION_SMS_API_ID` | API-ключ [SMS.ru](https://sms.ru/?panel=api) |
+| `VERIFICATION_SMS_FROM` | Номер отправителя SMS |
+| `VERIFICATION_DELIVERY_MODE` | `log` — коды только в логах, **без** SMTP/SMS; `production` — реальная отправка; `test` — pytest |
+
+Без `VERIFICATION_SMTP_PASSWORD` письма не уходят (код виден в `docker compose logs backend`). Без `VERIFICATION_SMS_API_ID` SMS не отправляются (код в логах).
+
+### Режим `log` (разработка)
+
+В `.env` оставьте `VERIFICATION_DELIVERY_MODE=log`. После «Сохранить профиль» код появится в логе:
+
+```powershell
+docker compose logs backend --tail 30
+```
+
+Ищите строку `Email verification code for ...` или `SMS verification code for ...`.
+
+### Режим `production` (боевой)
+
+1. Включите двухфакторную аутентификацию в Google-аккаунте.
+2. Создайте **пароль приложения**: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) (тип «Почта», устройство «Другое»).
+3. В `.env`: `VERIFICATION_SMTP_PASSWORD=<16 символов без пробелов>`, `VERIFICATION_DELIVERY_MODE=production`.
+4. Перезапустите backend: `docker compose up -d`.
+
+Обычный пароль от Gmail для SMTP **не работает** (ошибка `535 Username and Password not accepted`).

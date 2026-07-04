@@ -17,7 +17,14 @@ class Settings(BaseSettings):
     default_idle_power_threshold_w: float = 50.0
     default_idle_current_threshold_a: float = 0.5
     default_idle_duration_seconds: int = 60
-    downtime_smoothing_samples: int = 5
+    verification_code_ttl_minutes: int = 10
+    verification_smtp_host: str = "smtp.gmail.com"
+    verification_smtp_port: int = 587
+    verification_smtp_user: str = "semenigolnikov@gmail.com"
+    verification_smtp_password: str = ""
+    verification_sms_api_id: str = ""
+    verification_sms_from: str = "79135466546"
+    verification_delivery_mode: str = "log"
 
 
 settings = Settings()

@@ -96,10 +96,7 @@ class ChartPanelCard extends ConsumerWidget {
                 tilePadding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
                 childrenPadding: const EdgeInsets.only(bottom: 2),
-                title: Text(
-                  'Группировка',
-                  style: theme.textTheme.labelSmall,
-                ),
+                title: Text('Группировка', style: theme.textTheme.labelSmall),
                 initiallyExpanded: false,
                 children: [
                   ConstrainedBox(

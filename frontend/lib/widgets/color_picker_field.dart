@@ -42,11 +42,13 @@ class _ColorPickerFieldState extends State<ColorPickerField> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final borderColor = theme.dividerColor;
     final parsed = parseHexColor(_controller.text);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: Theme.of(context).textTheme.labelLarge),
+        Text(widget.label, style: theme.textTheme.titleSmall),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -79,7 +81,6 @@ class _ColorPickerFieldState extends State<ColorPickerField> {
           controller: _controller,
           decoration: InputDecoration(
             labelText: 'HEX (#RRGGBB)',
-            border: const OutlineInputBorder(),
             prefixIcon: parsed != null
                 ? Padding(
                     padding: const EdgeInsets.all(12),
@@ -89,7 +90,7 @@ class _ColorPickerFieldState extends State<ColorPickerField> {
                       decoration: BoxDecoration(
                         color: parsed,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.grey),
+                        border: Border.all(color: borderColor),
                       ),
                     ),
                   )
@@ -138,11 +139,19 @@ class _ColorSwatch extends StatelessWidget {
             color: icon == null ? color : Theme.of(context).colorScheme.surfaceContainerHighest,
           shape: BoxShape.circle,
           border: Border.all(
-            color: selected ? Theme.of(context).colorScheme.primary : Colors.grey,
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).dividerColor,
             width: selected ? 3 : 1,
           ),
         ),
-        child: icon != null ? Icon(icon, size: 18) : null,
+        child: icon != null
+            ? Icon(
+                icon,
+                size: 18,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              )
+            : null,
       ),
     );
   }

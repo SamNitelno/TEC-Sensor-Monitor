@@ -94,9 +94,15 @@ async def update_profile(
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Login already taken")
 
     if payload.email is not None and payload.email != user.email:
-        existing = await user_repository.get_by_email(session, payload.email)
-        if existing is not None and existing.id != user.id:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already taken")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email changes require verification. Use /auth/me/contact/send-codes",
+        )
+    if payload.phone is not None and payload.phone != user.phone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone changes require verification. Use /auth/me/contact/send-codes",
+        )
 
     await user_repository.update_profile(
         session,

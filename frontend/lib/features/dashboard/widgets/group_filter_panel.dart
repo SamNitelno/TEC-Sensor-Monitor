@@ -53,7 +53,7 @@ class GroupFilterPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (!embedded)
-          Text('Группировка', style: Theme.of(context).textTheme.labelLarge),
+          Text('Группировка', style: Theme.of(context).textTheme.labelSmall),
         if (connectionIssue != null) ...[
           if (!embedded) const SizedBox(height: 8),
           Row(
@@ -103,7 +103,7 @@ class GroupFilterPanel extends StatelessWidget {
           : const LinearProgressIndicator(),
       error: (e, _) => cachedWorkshops != null
           ? _workshopChips(context, cachedWorkshops!)
-          : _inlineError('Цеха: ${friendlyApiError(e)}'),
+          : _inlineError(context, 'Цеха: ${friendlyApiError(e)}'),
       data: (workshops) => _workshopChips(context, workshops),
     );
   }
@@ -116,12 +116,13 @@ class GroupFilterPanel extends StatelessWidget {
       children: [
         _allScopeChip(
           context: context,
-          label: 'Все цеха',
+          label: const Text('Все цеха'),
           active: allActive,
           onPressed: onWorkshopsAll,
         ),
         for (final workshop in workshops)
-          FilterChip(
+          _filterChip(
+            context: context,
             avatar: CircleAvatar(
               radius: 6,
               backgroundColor: resolveWorkshopChipColor(
@@ -131,7 +132,6 @@ class GroupFilterPanel extends StatelessWidget {
             ),
             label: Text(workshop.name),
             selected: selectedWorkshopIds.contains(workshop.id),
-            showCheckmark: true,
             onSelected: (selected) => onWorkshopToggle(workshop.id, selected),
           ),
       ],
@@ -145,7 +145,7 @@ class GroupFilterPanel extends StatelessWidget {
           : const LinearProgressIndicator(),
       error: (e, _) => cachedSites != null
           ? _siteChips(context, cachedSites!)
-          : _inlineError('Площадки: ${friendlyApiError(e)}'),
+          : _inlineError(context, 'Площадки: ${friendlyApiError(e)}'),
       data: (sites) {
         if (sites.isEmpty) {
           return const Text('Нет площадок в выбранной группе');
@@ -163,19 +163,19 @@ class GroupFilterPanel extends StatelessWidget {
       children: [
         _allScopeChip(
           context: context,
-          label: 'Все площадки',
+          label: const Text('Все площадки'),
           active: allActive,
           onPressed: onSitesAll,
         ),
         for (final site in sites)
-          FilterChip(
+          _filterChip(
+            context: context,
             avatar: CircleAvatar(
               radius: 6,
               backgroundColor: resolveSiteChipColor(site, sites.indexOf(site)),
             ),
             label: Text(site.name),
             selected: selectedSiteIds.contains(site.id),
-            showCheckmark: true,
             onSelected: (selected) => onSiteToggle(site.id, selected),
           ),
       ],
@@ -189,7 +189,7 @@ class GroupFilterPanel extends StatelessWidget {
           : const LinearProgressIndicator(),
       error: (e, _) => cachedSensors != null
           ? _sensorChips(context, cachedSensors!)
-          : _inlineError('Датчики: ${friendlyApiError(e)}'),
+          : _inlineError(context, 'Датчики: ${friendlyApiError(e)}'),
       data: (sensors) {
         if (sensors.isEmpty) {
           return const Text('Нет датчиков в выбранной группе');
@@ -206,12 +206,13 @@ class GroupFilterPanel extends StatelessWidget {
       children: [
         _allScopeChip(
           context: context,
-          label: 'Все датчики',
+          label: const Text('Все датчики'),
           active: allSensorsSelected,
           onPressed: onAllSensors,
         ),
         for (final sensor in sensors)
-          FilterChip(
+          _filterChip(
+            context: context,
             avatar: Icon(
               Icons.circle,
               size: 10,
@@ -222,31 +223,58 @@ class GroupFilterPanel extends StatelessWidget {
             label: Text(
               sensor.isOnline ? sensor.name : '${sensor.name} · offline',
             ),
-            selected: !allSensorsSelected && selectedSensorIds.contains(sensor.id),
-            showCheckmark: true,
+            selected:
+                !allSensorsSelected && selectedSensorIds.contains(sensor.id),
             onSelected: (selected) => onSensorToggle(sensor.id, selected),
           ),
       ],
     );
   }
 
+  Widget _filterChip({
+    required BuildContext context,
+    required Widget label,
+    required bool selected,
+    required ValueChanged<bool> onSelected,
+    Widget? avatar,
+    bool showCheckmark = true,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return FilterChip(
+      avatar: avatar,
+      label: label,
+      selected: selected,
+      showCheckmark: showCheckmark,
+      selectedColor: scheme.secondaryContainer,
+      checkmarkColor: scheme.onSecondaryContainer,
+      labelStyle: selected
+          ? Theme.of(context).chipTheme.secondaryLabelStyle
+          : Theme.of(context).chipTheme.labelStyle,
+      onSelected: onSelected,
+    );
+  }
+
   Widget _allScopeChip({
     required BuildContext context,
-    required String label,
+    required Widget label,
     required bool active,
     required VoidCallback onPressed,
   }) {
     return Opacity(
       opacity: active ? 1 : 0.45,
-      child: FilterChip(
-        label: Text(label),
+      child: _filterChip(
+        context: context,
+        label: label,
         selected: active,
         onSelected: (_) => onPressed(),
       ),
     );
   }
 
-  Widget _inlineError(String message) {
-    return Text(message, style: const TextStyle(fontSize: 13));
+  Widget _inlineError(BuildContext context, String message) {
+    return Text(
+      message,
+      style: Theme.of(context).textTheme.bodySmall,
+    );
   }
 }

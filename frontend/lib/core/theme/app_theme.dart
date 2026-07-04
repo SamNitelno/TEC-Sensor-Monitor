@@ -187,20 +187,33 @@ abstract final class AppTheme {
     final border = isDark ? TekColors.darkBorder : TekColors.lightBorder;
     final onSurface =
         isDark ? TekColors.darkTextPrimary : TekColors.lightTextPrimary;
+    final muted =
+        isDark ? TekColors.darkTextMuted : TekColors.lightTextMuted;
     final primary = isDark ? TekColors.primary : TekColors.primaryDark;
 
-    final colorScheme = ColorScheme(
-      brightness: brightness,
+    final accent = TekColors.secondary;
+
+    final colorScheme = (isDark ? ColorScheme.dark() : ColorScheme.light()).copyWith(
       primary: primary,
       onPrimary: isDark ? TekColors.darkBackground : Colors.white,
-      secondary: TekColors.secondary,
-      onSecondary: TekColors.darkBackground,
+      secondary: accent,
+      onSecondary: isDark ? TekColors.darkBackground : TekColors.lightTextPrimary,
+      secondaryContainer: isDark
+          ? accent
+          : accent.withValues(alpha: 0.22),
+      onSecondaryContainer: isDark ? Colors.white : TekColors.lightTextPrimary,
       error: TekColors.error,
       onError: Colors.white,
       surface: surface,
       onSurface: onSurface,
+      onSurfaceVariant: muted,
       surfaceContainerHighest: elevated,
       outline: border,
+    );
+
+    final inputBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(color: border),
     );
 
     return ThemeData(
@@ -209,6 +222,8 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: bg,
       colorScheme: colorScheme,
       textTheme: AppTypography.textTheme(brightness),
+      iconTheme: IconThemeData(color: onSurface),
+      primaryIconTheme: IconThemeData(color: primary),
       appBarTheme: AppBarTheme(
         backgroundColor: surface,
         foregroundColor: onSurface,
@@ -236,12 +251,18 @@ abstract final class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface,
         indicatorColor: primary.withValues(alpha: 0.15),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          return IconThemeData(
+            color: states.contains(WidgetState.selected) ? primary : muted,
+          );
+        }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           return GoogleFonts.sourceSans3(
             fontSize: 12,
             fontWeight: states.contains(WidgetState.selected)
                 ? FontWeight.w600
                 : FontWeight.w500,
+            color: states.contains(WidgetState.selected) ? primary : muted,
           );
         }),
         height: 64,
@@ -250,22 +271,23 @@ abstract final class AppTheme {
         backgroundColor: surface,
         indicatorColor: primary.withValues(alpha: 0.15),
         selectedIconTheme: IconThemeData(color: primary),
-        unselectedIconTheme: IconThemeData(
-          color: isDark ? TekColors.darkTextMuted : TekColors.lightTextMuted,
+        unselectedIconTheme: IconThemeData(color: muted),
+        selectedLabelTextStyle: GoogleFonts.sourceSans3(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: primary,
+        ),
+        unselectedLabelTextStyle: GoogleFonts.sourceSans3(
+          fontSize: 12,
+          color: muted,
         ),
         labelType: NavigationRailLabelType.all,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: elevated,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: border),
-        ),
+        border: inputBorder,
+        enabledBorder: inputBorder,
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: primary, width: 2),
@@ -276,10 +298,15 @@ abstract final class AppTheme {
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        labelStyle: GoogleFonts.sourceSans3(fontSize: 14),
+        labelStyle: GoogleFonts.sourceSans3(fontSize: 14, color: muted),
+        hintStyle: GoogleFonts.sourceSans3(fontSize: 14, color: muted),
+        floatingLabelStyle: GoogleFonts.sourceSans3(fontSize: 14, color: primary),
+        helperStyle: GoogleFonts.sourceSans3(fontSize: 12, color: muted),
+        errorStyle: GoogleFonts.sourceSans3(fontSize: 12, color: TekColors.error),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          foregroundColor: isDark ? TekColors.darkBackground : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -292,6 +319,7 @@ abstract final class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          foregroundColor: onSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -301,6 +329,7 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
+          foregroundColor: primary,
           textStyle: GoogleFonts.sourceSans3(fontWeight: FontWeight.w600),
         ),
       ),
@@ -312,18 +341,110 @@ abstract final class AppTheme {
         ),
       ),
       chipTheme: ChipThemeData(
+        backgroundColor: elevated,
+        disabledColor: elevated.withValues(alpha: 0.5),
+        selectedColor: accent,
+        secondarySelectedColor: accent,
+        checkmarkColor: isDark ? Colors.white : TekColors.lightTextPrimary,
+        showCheckmark: true,
+        labelStyle: GoogleFonts.sourceSans3(fontSize: 12, color: onSurface),
+        secondaryLabelStyle: GoogleFonts.sourceSans3(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: isDark ? Colors.white : TekColors.lightTextPrimary,
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(color: border),
         ),
-        labelStyle: GoogleFonts.sourceSans3(fontSize: 12),
+      ),
+      listTileTheme: ListTileThemeData(
+        textColor: onSurface,
+        iconColor: muted,
+        titleTextStyle: GoogleFonts.sourceSans3(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: onSurface,
+        ),
+        subtitleTextStyle: GoogleFonts.sourceSans3(fontSize: 14, color: muted),
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        textStyle: GoogleFonts.sourceSans3(fontSize: 14, color: onSurface),
+        inputDecorationTheme: InputDecorationTheme(
+          labelStyle: GoogleFonts.sourceSans3(fontSize: 14, color: muted),
+          hintStyle: GoogleFonts.sourceSans3(fontSize: 14, color: muted),
+        ),
+      ),
+      expansionTileTheme: ExpansionTileThemeData(
+        textColor: onSurface,
+        collapsedTextColor: muted,
+        iconColor: muted,
+        collapsedIconColor: muted,
+        backgroundColor: Colors.transparent,
+        collapsedBackgroundColor: Colors.transparent,
+      ),
+      searchBarTheme: SearchBarThemeData(
+        textStyle: WidgetStatePropertyAll(
+          GoogleFonts.sourceSans3(fontSize: 14, color: onSurface),
+        ),
+        hintStyle: WidgetStatePropertyAll(
+          GoogleFonts.sourceSans3(fontSize: 14, color: muted),
+        ),
+        backgroundColor: WidgetStatePropertyAll(elevated),
+        surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
+        overlayColor: WidgetStatePropertyAll(primary.withValues(alpha: 0.08)),
+      ),
+      tooltipTheme: TooltipThemeData(
+        textStyle: GoogleFonts.sourceSans3(fontSize: 12, color: onSurface),
+        decoration: BoxDecoration(
+          color: elevated,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: border),
+        ),
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(elevated),
+          surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: surface,
+        textStyle: GoogleFonts.sourceSans3(fontSize: 14, color: onSurface),
+        surfaceTintColor: Colors.transparent,
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return isDark ? TekColors.darkBackground : Colors.white;
+            }
+            return onSurface;
+          }),
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return primary;
+            }
+            return elevated;
+          }),
+          side: WidgetStatePropertyAll(BorderSide(color: border)),
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
+        backgroundColor: elevated,
+        contentTextStyle: GoogleFonts.sourceSans3(color: onSurface),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: GoogleFonts.manrope(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: onSurface,
+        ),
+        contentTextStyle: GoogleFonts.sourceSans3(fontSize: 14, color: muted),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       bottomSheetTheme: BottomSheetThemeData(
