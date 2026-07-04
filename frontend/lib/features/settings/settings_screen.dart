@@ -5,6 +5,8 @@ import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/core/password_validation.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/models/user.dart';
+import 'package:tek_sensor_monitor/core/theme/app_theme.dart';
+import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -120,7 +122,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final profileAsync = ref.watch(profileProvider);
 
     return profileAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const TekPageLoading(),
       error: (e, _) => Center(child: Text(friendlyApiError(e))),
       data: (profile) {
         _initFromProfile(profile);
@@ -225,6 +227,57 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Text('Сменить пароль'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Оформление', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 16),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final preference = ref.watch(themePreferenceProvider);
+                        return SegmentedButton<AppThemePreference>(
+                          segments: [
+                            for (final mode in AppThemePreference.values)
+                              ButtonSegment(
+                                value: mode,
+                                icon: Icon(mode.icon, size: 18),
+                                label: Text(mode.label),
+                              ),
+                          ],
+                          selected: {preference},
+                          onSelectionChanged: (selected) {
+                            ref
+                                .read(themePreferenceProvider.notifier)
+                                .setPreference(selected.first);
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final reduceMotion = ref.watch(reduceMotionProvider);
+                        return SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Уменьшить анимации'),
+                          subtitle: const Text(
+                            'Отключает эффекты интерфейса и графиков',
+                          ),
+                          value: reduceMotion,
+                          onChanged: (value) => ref
+                              .read(reduceMotionProvider.notifier)
+                              .setEnabled(value),
+                        );
+                      },
                     ),
                   ],
                 ),

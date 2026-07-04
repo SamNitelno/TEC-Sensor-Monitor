@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/core/password_validation.dart';
+import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
+import 'package:tek_sensor_monitor/widgets/auth_scaffold.dart';
+import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -54,9 +57,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           });
         }
       } catch (_) {
-        if (mounted) {
-          setState(() => _checkingLogin = false);
-        }
+        if (mounted) setState(() => _checkingLogin = false);
       }
     });
   }
@@ -95,7 +96,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final auth = ref.watch(authProvider);
 
     String? loginHelper;
@@ -107,101 +107,60 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       loginHelper = 'Логин занят';
     }
 
-    return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(28),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                  Icon(Icons.person_add, size: 48, color: theme.colorScheme.primary),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Регистрация',
-                    style: theme.textTheme.headlineMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Новый пользователь получает права viewer',
-                    style: theme.textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 28),
-                  TextField(
-                    controller: _loginController,
-                    decoration: InputDecoration(
-                      labelText: 'Логин',
-                      border: const OutlineInputBorder(),
-                      helperText: loginHelper,
-                      suffixIcon: _loginAvailable == true
-                          ? const Icon(Icons.check_circle, color: Colors.green)
-                          : _loginAvailable == false
-                              ? const Icon(Icons.cancel, color: Colors.red)
-                              : null,
-                    ),
-                    onChanged: (value) => _scheduleLoginCheck(value.trim()),
-                    textInputAction: TextInputAction.next,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _passwordController,
-                    decoration: InputDecoration(
-                      labelText: 'Пароль',
-                      border: const OutlineInputBorder(),
-                      helperText: '8+ символов, цифры и латиница',
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                      ),
-                    ),
-                    obscureText: _obscure,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _confirmController,
-                    decoration: const InputDecoration(
-                      labelText: 'Подтверждение пароля',
-                      border: OutlineInputBorder(),
-                    ),
-                    obscureText: _obscure,
-                    onSubmitted: (_) => _submit(),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: auth.isLoading ? null : _submit,
-                    child: auth.isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Зарегистрироваться'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () => context.go('/login'),
-                    child: const Text('Уже есть аккаунт? Войти'),
-                  ),
-                        ],
-                      ),
-                    ),
-                  ),
+    return AuthScaffold(
+      title: 'Регистрация',
+      subtitle: 'Новый пользователь получает права viewer',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _loginController,
+            decoration: InputDecoration(
+              labelText: 'Логин',
+              helperText: loginHelper,
+              suffixIcon: _loginAvailable == true
+                  ? const Icon(Icons.check_circle_outline, color: TekColors.success)
+                  : _loginAvailable == false
+                      ? const Icon(Icons.cancel_outlined, color: TekColors.error)
+                      : null,
+            ),
+            onChanged: (value) => _scheduleLoginCheck(value.trim()),
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordController,
+            decoration: InputDecoration(
+              labelText: 'Пароль',
+              helperText: '8+ символов, цифры и латиница',
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                 ),
+                onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),
-          );
-        },
+            obscureText: _obscure,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _confirmController,
+            decoration: const InputDecoration(labelText: 'Подтверждение пароля'),
+            obscureText: _obscure,
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: auth.isLoading ? null : _submit,
+            child: auth.isLoading
+                ? const TekLoadingIndicator(size: 24, compact: true)
+                : const Text('Зарегистрироваться'),
+          ),
+        ],
+      ),
+      footer: TextButton(
+        onPressed: () => context.go('/login'),
+        child: const Text('Уже есть аккаунт? Войти'),
       ),
     );
   }

@@ -1,7 +1,10 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:tek_sensor_monitor/core/theme/app_theme.dart';
+import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
 import 'package:tek_sensor_monitor/models/reading_point.dart';
 
@@ -33,7 +36,7 @@ class ChartDowntimeBand {
   final String type;
 }
 
-class CurrentChart extends StatefulWidget {
+class CurrentChart extends ConsumerStatefulWidget {
   const CurrentChart({
     super.key,
     required this.series,
@@ -43,6 +46,7 @@ class CurrentChart extends StatefulWidget {
     this.downtimeBands = const [],
     this.onVisibleRangeChanged,
     this.onScaleWheel,
+    this.isLiveWindow = false,
   });
 
   final List<ChartSeriesData> series;
@@ -52,23 +56,16 @@ class CurrentChart extends StatefulWidget {
   final List<ChartDowntimeBand> downtimeBands;
   final void Function(DateTime start, DateTime end)? onVisibleRangeChanged;
   final ValueChanged<ChartScale>? onScaleWheel;
+  final bool isLiveWindow;
 
-  static const _palette = [
-    Color(0xFF00D4AA),
-    Color(0xFFF5A623),
-    Color(0xFF58A6FF),
-    Color(0xFFE06C75),
-    Color(0xFFD2A8FF),
-    Color(0xFF79C0FF),
-  ];
-
-  static Color colorForIndex(int index) => _palette[index % _palette.length];
+  static Color colorForIndex(int index) =>
+      TekColors.entityPalette[index % TekColors.entityPalette.length];
 
   @override
-  State<CurrentChart> createState() => _CurrentChartState();
+  ConsumerState<CurrentChart> createState() => _CurrentChartState();
 }
 
-class _CurrentChartState extends State<CurrentChart> {
+class _CurrentChartState extends ConsumerState<CurrentChart> {
   late ZoomPanBehavior _zoomPanBehavior;
   DateTime? _pendingVisibleMin;
   DateTime? _pendingVisibleMax;
@@ -107,24 +104,39 @@ class _CurrentChartState extends State<CurrentChart> {
   @override
   void didUpdateWidget(CurrentChart oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final scaleChanged = oldWidget.scale != widget.scale;
+    if (scaleChanged) {
+      _zoomPanBehavior.reset();
+      _pendingVisibleMin = null;
+      _pendingVisibleMax = null;
+      return;
+    }
+
     final rangeChanged = oldWidget.rangeStart != widget.rangeStart ||
         oldWidget.rangeEnd != widget.rangeEnd;
-    if (rangeChanged) {
-      if (_rangeUpdateFromZoom) {
-        _rangeUpdateFromZoom = false;
-      } else {
-        _zoomPanBehavior.reset();
-        _pendingVisibleMin = null;
-        _pendingVisibleMax = null;
-      }
+    if (!rangeChanged) return;
+
+    if (_rangeUpdateFromZoom) {
+      _rangeUpdateFromZoom = false;
+      return;
     }
+
+    // Live polling slides the window — keep zoom/pan, don't flash the chart.
+    if (widget.isLiveWindow) return;
+
+    _zoomPanBehavior.reset();
+    _pendingVisibleMin = null;
+    _pendingVisibleMax = null;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tek = tekTheme(context);
     final axisMin = _axisMinimum();
     final axisMax = _axisMaximum();
+    final animMs =
+        tekAnimationsEnabled(context, ref) ? 700.0 : 0.0;
 
     return Listener(
       behavior: HitTestBehavior.opaque,
@@ -137,87 +149,87 @@ class _CurrentChartState extends State<CurrentChart> {
         }
       },
       child: SfCartesianChart(
-      onActualRangeChanged: _onActualRangeChanged,
-      onZoomEnd: _onZoomEnd,
-      plotAreaBorderWidth: 0,
-      margin: const EdgeInsets.only(top: 8, right: 12, bottom: 4, left: 4),
-      legend: Legend(
-        isVisible: widget.series.length > 1,
-        textStyle: TextStyle(
-          color: theme.textTheme.bodyMedium?.color,
-          fontSize: 11,
-        ),
-      ),
-      zoomPanBehavior: _zoomPanBehavior,
-      primaryXAxis: DateTimeAxis(
-        minimum: axisMin,
-        maximum: axisMax,
-        plotBands: [
-          for (final band in widget.downtimeBands)
-            PlotBand(
-              start: band.start,
-              end: band.end,
-              color: band.type == 'offline'
-                  ? Colors.red.withValues(alpha: 0.12)
-                  : Colors.orange.withValues(alpha: 0.12),
-              borderWidth: 0,
-            ),
-        ],
-        majorGridLines:
-            MajorGridLines(color: Colors.white.withValues(alpha: 0.06)),
-        axisLine: AxisLine(color: Colors.white.withValues(alpha: 0.12)),
-        labelStyle: TextStyle(
-          color: theme.textTheme.bodyMedium?.color,
-          fontSize: 11,
-        ),
-        dateFormat: _dateFormat(widget.scale),
-        intervalType: _intervalType(widget.scale),
-      ),
-      primaryYAxis: NumericAxis(
-        title: AxisTitle(
-          text: 'Ток, А',
+        onActualRangeChanged: _onActualRangeChanged,
+        onZoomEnd: _onZoomEnd,
+        plotAreaBorderWidth: 0,
+        margin: const EdgeInsets.only(top: 8, right: 12, bottom: 4, left: 4),
+        legend: Legend(
+          isVisible: widget.series.length > 1,
           textStyle: TextStyle(
             color: theme.textTheme.bodyMedium?.color,
             fontSize: 11,
           ),
         ),
-        majorGridLines:
-            MajorGridLines(color: Colors.white.withValues(alpha: 0.06)),
-        axisLine: AxisLine(color: Colors.white.withValues(alpha: 0.12)),
-        labelStyle: TextStyle(
-          color: theme.textTheme.bodyMedium?.color,
-          fontSize: 11,
+        zoomPanBehavior: _zoomPanBehavior,
+        primaryXAxis: DateTimeAxis(
+          minimum: axisMin,
+          maximum: axisMax,
+          plotBands: [
+            for (final band in widget.downtimeBands)
+              PlotBand(
+                start: band.start,
+                end: band.end,
+                color: band.type == 'offline'
+                    ? TekColors.error.withValues(alpha: 0.12)
+                    : TekColors.secondary.withValues(alpha: 0.12),
+                borderWidth: 0,
+              ),
+          ],
+          majorGridLines: MajorGridLines(color: tek.gridLine),
+          axisLine: AxisLine(color: tek.axisLine),
+          labelStyle: TextStyle(
+            color: theme.textTheme.bodyMedium?.color,
+            fontSize: 11,
+          ),
+          dateFormat: _dateFormat(widget.scale),
+          intervalType: _intervalType(widget.scale),
         ),
-        decimalPlaces: 2,
-      ),
-      tooltipBehavior: TooltipBehavior(enable: true),
-      series: [
-        for (final item in widget.series)
-          for (var segIdx = 0; segIdx < item.segments.length; segIdx++) ...[
-            if (widget.series.length == 1 && item.segments[segIdx].length > 1)
-              RangeAreaSeries<ReadingPoint, DateTime>(
+        primaryYAxis: NumericAxis(
+          title: AxisTitle(
+            text: 'Ток, А',
+            textStyle: TextStyle(
+              color: theme.textTheme.bodyMedium?.color,
+              fontSize: 11,
+            ),
+          ),
+          majorGridLines: MajorGridLines(color: tek.gridLine),
+          axisLine: AxisLine(color: tek.axisLine),
+          labelStyle: TextStyle(
+            color: theme.textTheme.bodyMedium?.color,
+            fontSize: 11,
+          ),
+          decimalPlaces: 2,
+        ),
+        tooltipBehavior: TooltipBehavior(enable: true),
+        series: [
+          for (final item in widget.series)
+            for (var segIdx = 0; segIdx < item.segments.length; segIdx++) ...[
+              if (widget.series.length == 1 && item.segments[segIdx].length > 1)
+                RangeAreaSeries<ReadingPoint, DateTime>(
+                  dataSource: item.segments[segIdx],
+                  xValueMapper: (point, _) => point.time,
+                  highValueMapper: (point, _) => point.max,
+                  lowValueMapper: (point, _) => point.min,
+                  color: item.color.withValues(alpha: 0.18),
+                  borderColor: item.color.withValues(alpha: 0.35),
+                  borderWidth: 1,
+                  animationDuration: animMs,
+                  name: segIdx == 0 ? 'min–max' : '',
+                  isVisibleInLegend: segIdx == 0,
+                ),
+              FastLineSeries<ReadingPoint, DateTime>(
                 dataSource: item.segments[segIdx],
                 xValueMapper: (point, _) => point.time,
-                highValueMapper: (point, _) => point.max,
-                lowValueMapper: (point, _) => point.min,
-                color: item.color.withValues(alpha: 0.18),
-                borderColor: item.color.withValues(alpha: 0.35),
-                borderWidth: 1,
-                name: segIdx == 0 ? 'min–max' : '',
+                yValueMapper: (point, _) => point.avg,
+                color: item.color,
+                width: 2,
+                animationDuration: animMs,
+                name: segIdx == 0 ? item.sensorName : '',
                 isVisibleInLegend: segIdx == 0,
               ),
-            FastLineSeries<ReadingPoint, DateTime>(
-              dataSource: item.segments[segIdx],
-              xValueMapper: (point, _) => point.time,
-              yValueMapper: (point, _) => point.avg,
-              color: item.color,
-              width: 2,
-              name: segIdx == 0 ? item.sensorName : '',
-              isVisibleInLegend: segIdx == 0,
-            ),
-          ],
-      ],
-    ),
+            ],
+        ],
+      ),
     );
   }
 
@@ -277,4 +289,3 @@ class _CurrentChartState extends State<CurrentChart> {
     };
   }
 }
-

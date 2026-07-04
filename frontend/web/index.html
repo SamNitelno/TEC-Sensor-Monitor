@@ -1,19 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
   <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="TEC sensor monitoring dashboard">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="ТЭК Мониторинг">
+  <meta name="theme-color" content="#0A0E14" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F0F3F7" media="(prefers-color-scheme: light)">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
   <link rel="icon" type="image/png" href="favicon.png"/>
   <title>ТЭК · Мониторинг датчиков</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #0A0E14;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+    }
+    #tek-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background: radial-gradient(ellipse at 50% 0%, #121820 0%, #0A0E14 55%);
+      color: #E8EDF4;
+      z-index: 9999;
+      transition: opacity 0.4s ease;
+    }
+    #tek-splash.hide { opacity: 0; pointer-events: none; }
+    #tek-splash .logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 14px;
+      object-fit: contain;
+      background: #121820;
+      box-shadow: 0 0 0 1px #2A3544;
+    }
+    #tek-splash h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    #tek-splash p {
+      margin: 0;
+      color: #7D8B9E;
+      font-size: 0.9rem;
+    }
+    .wave-wrap { width: 160px; height: 48px; }
+    .wave {
+      fill: none;
+      stroke: #00C9A7;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-dasharray: 220;
+      stroke-dashoffset: 220;
+      animation: draw 1.4s ease-in-out infinite;
+      filter: drop-shadow(0 0 6px rgba(0, 201, 167, 0.35));
+    }
+    @keyframes draw {
+      0% { stroke-dashoffset: 220; opacity: 0.5; }
+      50% { stroke-dashoffset: 0; opacity: 1; }
+      100% { stroke-dashoffset: -220; opacity: 0.5; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wave { animation: none; stroke-dashoffset: 0; }
+    }
+  </style>
 </head>
 <body>
+  <div id="tek-splash" aria-live="polite" aria-busy="true">
+    <img class="logo" src="icons/Icon-192.png" alt="ТЭК" width="72" height="72"
+         onerror="this.style.display='none'">
+    <h1>ТЭК · Мониторинг</h1>
+    <div class="wave-wrap" aria-hidden="true">
+      <svg viewBox="0 0 160 48" width="160" height="48">
+        <path class="wave" d="M4,24 C20,8 28,40 44,24 S68,8 84,24 108,40 124,24 140,12 156,24"/>
+      </svg>
+    </div>
+    <p>Загрузка приложения…</p>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var splash = document.getElementById('tek-splash');
+      if (!splash) return;
+      splash.classList.add('hide');
+      splash.setAttribute('aria-busy', 'false');
+      setTimeout(function () { splash.remove(); }, 450);
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -12,6 +12,7 @@ import 'package:tek_sensor_monitor/core/color_utils.dart';
 import 'package:tek_sensor_monitor/features/sensors/sensor_info_dialog.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
 import 'package:tek_sensor_monitor/widgets/color_picker_field.dart';
+import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 
 enum _SensorsSortField { name, site, createdAt }
 
@@ -112,7 +113,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
     final sites = sitesAsync.valueOrNull ?? [];
 
     return sensorsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const TekPageLoading(),
       error: (e, _) => Center(child: Text(friendlyApiError(e))),
       data: (sensors) {
         final filtered = _sortSensors(_filterSensors(sensors, sites), sites);

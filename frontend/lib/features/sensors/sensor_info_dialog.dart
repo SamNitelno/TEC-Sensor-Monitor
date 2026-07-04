@@ -5,6 +5,7 @@ import 'package:tek_sensor_monitor/core/color_utils.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
+import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 
 Future<void> showSensorInfoDialog(
   BuildContext context,
@@ -66,7 +67,7 @@ class _SensorInfoDialogState extends ConsumerState<_SensorInfoDialog> {
       content: SizedBox(
         width: 480,
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: TekLoadingIndicator())
             : _error != null
                 ? Text(friendlyApiError(_error!))
                 : _audit == null

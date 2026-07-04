@@ -131,11 +131,11 @@ class _ColorSwatch extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: icon == null ? color : Colors.grey.shade200,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: icon == null ? color : Theme.of(context).colorScheme.surfaceContainerHighest,
           shape: BoxShape.circle,
           border: Border.all(
             color: selected ? Theme.of(context).colorScheme.primary : Colors.grey,

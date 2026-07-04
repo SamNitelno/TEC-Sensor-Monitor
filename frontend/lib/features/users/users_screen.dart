@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/models/user.dart';
+import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 
 enum _UsersSortField { login, createdAt, role }
 
@@ -71,7 +72,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     final currentUserId = profileAsync.valueOrNull?.id;
 
     return usersAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const TekPageLoading(),
       error: (e, _) => Center(child: Text(friendlyApiError(e))),
       data: (users) {
         final filtered = _sortUsers(_filterUsers(users));

@@ -12,6 +12,8 @@ import 'package:tek_sensor_monitor/models/downtime.dart';
 import 'package:tek_sensor_monitor/models/reading_point.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
+import 'package:tek_sensor_monitor/widgets/tek_interactive.dart';
+import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 
 class ChartPanelCard extends ConsumerWidget {
   const ChartPanelCard({
@@ -61,6 +63,10 @@ class ChartPanelCard extends ConsumerWidget {
           children: [
             Row(
               children: [
+                if (panel.isLive) ...[
+                  const LivePulseDot(),
+                  const SizedBox(width: 6),
+                ],
                 Expanded(
                   child: Text(
                     panel.displayTitle(panelIndex),
@@ -264,59 +270,38 @@ class ChartPanelCard extends ConsumerWidget {
     required List<Sensor> sensors,
     List<DowntimeEvent> downtimeEvents = const [],
   }) {
-    return readingsAsync.when(
-      loading: () {
-        if (cachedReadings != null) {
-          return _chartContent(
-            ref: ref,
-            theme: theme,
-            response: cachedReadings,
-            panel: panel,
-            range: range,
-            workshops: workshops,
-            sites: sites,
-            sensors: sensors,
-            isStale: true,
-            downtimeEvents: downtimeEvents,
-          );
-        }
-        return const Center(child: CircularProgressIndicator());
-      },
-      error: (error, _) {
-        if (cachedReadings != null) {
-          return _chartContent(
-            ref: ref,
-            theme: theme,
-            response: cachedReadings,
-            panel: panel,
-            range: range,
-            workshops: workshops,
-            sites: sites,
-            sensors: sensors,
-            isStale: true,
-            errorMessage: connectionIssue ?? friendlyApiError(error),
-            downtimeEvents: downtimeEvents,
-          );
-        }
-        return ChartMessagePanel(
+    final response = readingsAsync.valueOrNull ?? cachedReadings;
+
+    if (response == null) {
+      return readingsAsync.when(
+        loading: () => const Center(child: TekPageLoading()),
+        error: (error, _) => ChartMessagePanel(
           icon: Icons.error_outline,
           title: 'Не удалось загрузить данные',
           subtitle: friendlyApiError(error),
           color: theme.colorScheme.error,
-        );
-      },
-      data: (response) => _chartContent(
-        ref: ref,
-        theme: theme,
-        response: response,
-        panel: panel,
-        range: range,
-        workshops: workshops,
-        sites: sites,
-        sensors: sensors,
-        isStale: false,
-        downtimeEvents: downtimeEvents,
-      ),
+        ),
+        data: (_) => const SizedBox.shrink(),
+      );
+    }
+
+    final isRefreshing = readingsAsync.isLoading;
+    final hasError = readingsAsync.hasError;
+
+    return _chartContent(
+      ref: ref,
+      theme: theme,
+      response: response,
+      panel: panel,
+      range: range,
+      workshops: workshops,
+      sites: sites,
+      sensors: sensors,
+      isStale: isRefreshing || hasError,
+      errorMessage: hasError
+          ? (connectionIssue ?? friendlyApiError(readingsAsync.error!))
+          : connectionIssue,
+      downtimeEvents: downtimeEvents,
     );
   }
 
@@ -429,16 +414,12 @@ class ChartPanelCard extends ConsumerWidget {
               width: constraints.maxWidth,
               height: constraints.maxHeight,
               child: CurrentChart(
-            key: ValueKey(
-              '${panelId}_${range.end.millisecondsSinceEpoch}_'
-              '${latestPointTime?.millisecondsSinceEpoch ?? 0}_'
-              '${pointsCount}_${bands.length}_'
-              '${downtimeEvents.where((e) => e.isOpen).length}',
-            ),
+            key: ValueKey(panelId),
             series: chartSeriesData,
             scale: panel.scale,
             rangeStart: range.start,
             rangeEnd: range.end,
+            isLiveWindow: panel.isLive,
             downtimeBands: bands,
             onScaleWheel: (scale) => updatePanelScale(ref, panelId, scale),
             onVisibleRangeChanged: (start, end) {

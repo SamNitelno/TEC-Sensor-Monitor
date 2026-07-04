@@ -4,6 +4,7 @@ import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/core/color_utils.dart';
+import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
 import 'package:tek_sensor_monitor/widgets/color_picker_field.dart';
 
@@ -39,14 +40,14 @@ class GroupsScreen extends ConsumerWidget {
               children: [
                 workshopsAsync.when(
                   loading: () =>
-                      const Center(child: CircularProgressIndicator()),
+                      const TekPageLoading(),
                   error: (e, _) =>
                       Center(child: Text(friendlyApiError(e))),
                   data: (workshops) => _WorkshopsTab(workshops: workshops),
                 ),
                 allSitesAsync.when(
                   loading: () =>
-                      const Center(child: CircularProgressIndicator()),
+                      const TekPageLoading(),
                   error: (e, _) =>
                       Center(child: Text(friendlyApiError(e))),
                   data: (sites) => _SitesTab(sites: sites),

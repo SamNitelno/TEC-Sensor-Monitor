@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/current_chart.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
@@ -78,15 +79,4 @@ Color resolveSensorChipColor(Sensor sensor, int index) {
   return resolveEntityColor(sensor.color, index);
 }
 
-const presetColors = [
-  '#00D4AA',
-  '#F5A623',
-  '#58A6FF',
-  '#E06C75',
-  '#D2A8FF',
-  '#79C0FF',
-  '#FF7B72',
-  '#FFA657',
-  '#7EE787',
-  '#A371F7',
-];
+const presetColors = TekColors.entityPaletteHex;

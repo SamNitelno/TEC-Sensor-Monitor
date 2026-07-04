@@ -10,6 +10,7 @@ import 'package:tek_sensor_monitor/features/provisioning/ble_constants.dart';
 import 'package:tek_sensor_monitor/features/provisioning/ble_platform.dart';
 import 'package:tek_sensor_monitor/features/provisioning/ble_provisioning_service.dart';
 import 'package:tek_sensor_monitor/features/provisioning/provisioning_providers.dart';
+import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
 
 enum ProvisioningStep { scan, configure, waiting, success }
@@ -289,7 +290,7 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
     final sensorsAsync = ref.watch(sensorsProvider);
 
     return sensorsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const TekPageLoading(),
       error: (e, _) => Center(child: Text('Ошибка загрузки датчиков: $e')),
       data: (sensors) => SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -373,15 +374,16 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
   }
 
   Widget _buildWaitingStep() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text('Ожидание первой телеметрии…'),
-          SizedBox(height: 8),
-          Text('ESP подключается к Wi-Fi и отправляет данные'),
+          const TekLoadingIndicator(size: 48, message: 'Ожидание первой телеметрии…'),
+          const SizedBox(height: 8),
+          Text(
+            'ESP подключается к Wi-Fi и отправляет данные',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
         ],
       ),
     );

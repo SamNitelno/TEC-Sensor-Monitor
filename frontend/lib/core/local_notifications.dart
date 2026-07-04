@@ -22,7 +22,11 @@ class LocalNotifications {
     );
     const settings = InitializationSettings(android: android, iOS: ios);
 
-    await _plugin.initialize(settings);
+    try {
+      await _plugin.initialize(settings);
+    } catch (_) {
+      // Platform plugins unavailable (e.g. widget tests).
+    }
     _initialized = true;
   }
 

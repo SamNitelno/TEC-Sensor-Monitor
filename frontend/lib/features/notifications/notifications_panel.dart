@@ -5,6 +5,7 @@ import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/notifications/notifications_providers.dart';
 import 'package:tek_sensor_monitor/models/notification.dart';
+import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 
 void showNotificationsPanel(BuildContext context, WidgetRef ref) {
   showModalBottomSheet<void>(
@@ -58,7 +59,7 @@ class NotificationsPanel extends ConsumerWidget {
             Expanded(
               child: notificationsAsync.when(
                 loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                    const TekPageLoading(message: 'Загрузка уведомлений…'),
                 error: (e, _) => Center(child: Text(friendlyApiError(e))),
                 data: (items) {
                   if (items.isEmpty) {

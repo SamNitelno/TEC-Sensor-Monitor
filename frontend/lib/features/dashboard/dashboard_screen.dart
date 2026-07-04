@@ -23,15 +23,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     super.initState();
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       ref.read(dashboardPollTickProvider.notifier).state++;
-      final panels = ref.read(chartPanelsProvider);
-      for (final panel in panels) {
-        ref.invalidate(panelReadingsProvider(panel.id));
-        ref.invalidate(panelSensorsProvider(panel.id));
-        ref.invalidate(panelSitesProvider(panel.id));
-        ref.invalidate(panelDowntimeEventsProvider(panel.id));
-        ref.invalidate(panelDowntimeSummaryProvider(panel.id));
-      }
-      ref.invalidate(workshopsProvider);
     });
   }
 
