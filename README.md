@@ -153,3 +153,23 @@ docker compose logs backend --tail 30
 4. Перезапустите backend: `docker compose up -d`.
 
 Обычный пароль от Gmail для SMTP **не работает** (ошибка `535 Username and Password not accepted`).
+
+## Production (LAN)
+
+Полный prod-стек: nginx + gunicorn + TimescaleDB + WebSocket + TLS.
+
+```powershell
+sh infra/tls/generate-self-signed.sh infra/tls
+# Настройте .env (JWT_SECRET, POSTGRES_PASSWORD, API_PUBLIC_BASE_URL=https://<LAN-IP>)
+.\scripts\build-prod.ps1
+```
+
+**Git Bash / Linux / macOS** — не используйте `.\scripts\...` (это синтаксис PowerShell):
+
+```bash
+sh scripts/build-prod.sh
+```
+
+Подробнее: [docs/production.md](docs/production.md), [docs/device-integration.md](docs/device-integration.md) (MQTT).
+
+Realtime: дашборд обновляется по WebSocket `/ws` без polling. MQTT (опционально): `docker compose -f docker-compose.prod.yml --profile mqtt up -d`.

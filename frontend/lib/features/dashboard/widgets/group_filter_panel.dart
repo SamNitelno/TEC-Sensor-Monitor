@@ -151,7 +151,12 @@ class GroupFilterPanel extends StatelessWidget {
             ),
             label: Text(workshop.name),
             selected: selectedWorkshopIds.contains(workshop.id),
-            onSelected: (selected) => onWorkshopToggle(workshop.id, selected),
+            onSelected: (selected) {
+              if (!selected && selectedWorkshopIds.contains(workshop.id)) {
+                return;
+              }
+              onWorkshopToggle(workshop.id, selected);
+            },
           ),
       ],
     );
@@ -210,7 +215,12 @@ class GroupFilterPanel extends StatelessWidget {
             ),
             label: Text(site.name),
             selected: selectedSiteIds.contains(site.id),
-            onSelected: (selected) => onSiteToggle(site.id, selected),
+            onSelected: (selected) {
+              if (!selected && selectedSiteIds.contains(site.id)) {
+                return;
+              }
+              onSiteToggle(site.id, selected);
+            },
           ),
       ],
     );
@@ -274,7 +284,14 @@ class GroupFilterPanel extends StatelessWidget {
             ),
             selected:
                 !allSensorsSelected && selectedSensorIds.contains(sensor.id),
-            onSelected: (selected) => onSensorToggle(sensor.id, selected),
+            onSelected: (selected) {
+              if (!selected &&
+                  !allSensorsSelected &&
+                  selectedSensorIds.contains(sensor.id)) {
+                return;
+              }
+              onSensorToggle(sensor.id, selected);
+            },
           ),
       ],
     );
@@ -296,6 +313,7 @@ class GroupFilterPanel extends StatelessWidget {
       showCheckmark: showCheckmark,
       selectedColor: scheme.secondaryContainer,
       checkmarkColor: scheme.onSecondaryContainer,
+      materialTapTargetSize: MaterialTapTargetSize.padded,
       labelStyle: selected
           ? Theme.of(context).chipTheme.secondaryLabelStyle
           : Theme.of(context).chipTheme.labelStyle,

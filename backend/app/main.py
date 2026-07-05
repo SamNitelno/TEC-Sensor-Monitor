@@ -1,40 +1,82 @@
 from contextlib import asynccontextmanager
 import asyncio
 
-from fastapi import FastAPI
+import structlog
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
+from app.core.config import settings
+from app.core.logging_config import configure_logging
+from app.core.rate_limit import limiter
 from app.db.session import async_session_factory
-from app.routers import auth, downtime, ingest, notifications, readings, sensors, sites, users, workshops
+from app.routers import (
+    auth,
+    downtime,
+    ingest,
+    notifications,
+    readings,
+    sensors,
+    sites,
+    users,
+    workshops,
+    ws,
+)
 from app.services.admin_bootstrap import ensure_admin_user
 from app.services.downtime_detection_service import downtime_worker_loop
+from app.services.mqtt_subscriber import mqtt_subscriber_loop
+from app.services.offline_sensor_service import offline_watchdog_loop
+
+configure_logging(json_logs=settings.json_logs, log_level=settings.log_level)
+logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with async_session_factory() as session:
         await ensure_admin_user(session)
-    watchdog_task = asyncio.create_task(downtime_worker_loop())
+
+    background_tasks = [
+        asyncio.create_task(downtime_worker_loop()),
+        asyncio.create_task(offline_watchdog_loop()),
+    ]
+    if settings.mqtt_enabled:
+        background_tasks.append(asyncio.create_task(mqtt_subscriber_loop()))
+
+    logger.info(
+        "app_started",
+        mqtt_enabled=settings.mqtt_enabled,
+        cors_origins=settings.cors_origin_list,
+    )
     try:
         yield
     finally:
-        watchdog_task.cancel()
-        try:
-            await watchdog_task
-        except asyncio.CancelledError:
-            pass
+        for task in background_tasks:
+            task.cancel()
+        for task in background_tasks:
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        logger.info("app_stopped")
 
 
 app = FastAPI(
     title="TEC Sensor Monitor",
     description="Internal sensor downtime monitoring for Tomsk Electronic Company",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +91,15 @@ app.include_router(readings.router, prefix="/api/v1")
 app.include_router(downtime.router, prefix="/api/v1")
 app.include_router(sites.router, prefix="/api/v1")
 app.include_router(workshops.router, prefix="/api/v1")
+app.include_router(ws.router)
+
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    log = logger.bind(method=request.method, path=request.url.path)
+    response = await call_next(request)
+    log.info("http_request", status_code=response.status_code)
+    return response
 
 
 @app.get("/health")

@@ -18,6 +18,7 @@ from app.repositories import (
 from app.schemas.ingest import ReadingIn
 from app.services import notification_service
 from app.services.sensor_status import is_sensor_online
+from app.services.ws_manager import ws_manager
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,32 @@ async def _notify_sensor_idle(
     )
 
 
+async def handle_mqtt_lwt_offline(session: AsyncSession, sensor: Sensor) -> None:
+    """Mark sensor offline immediately on MQTT Last Will."""
+    now = datetime.now(UTC)
+    await sensor_repository.set_status(session, sensor.id, SensorStatus.offline)
+    open_event = await downtime_repository.get_open_event(
+        session,
+        sensor.id,
+        DowntimeType.offline,
+    )
+    if open_event is None:
+        started_at = _as_utc(sensor.last_seen) if sensor.last_seen else now
+        await downtime_repository.create_event(
+            session,
+            sensor_id=sensor.id,
+            event_type=DowntimeType.offline,
+            started_at=started_at,
+        )
+        await _notify_sensor_offline(session, sensor, started_at)
+        logger.info("Sensor %s offline (MQTT LWT)", sensor.name)
+    await ws_manager.broadcast_sensor_status(
+        sensor_id=sensor.id,
+        status=SensorStatus.offline,
+        last_seen=sensor.last_seen,
+    )
+
+
 async def handle_telemetry_resumed(
     session: AsyncSession,
     sensor_id: int,
@@ -180,6 +207,11 @@ async def _process_offline(
     if not online:
         if sensor.status != SensorStatus.offline:
             await sensor_repository.set_status(session, sensor.id, SensorStatus.offline)
+            await ws_manager.broadcast_sensor_status(
+                sensor_id=sensor.id,
+                status=SensorStatus.offline,
+                last_seen=sensor.last_seen,
+            )
         if open_event is None:
             started_at = _as_utc(sensor.last_seen) if sensor.last_seen else now
             await downtime_repository.create_event(
@@ -194,6 +226,11 @@ async def _process_offline(
 
     if sensor.status != SensorStatus.online:
         await sensor_repository.set_status(session, sensor.id, SensorStatus.online)
+        await ws_manager.broadcast_sensor_status(
+            sensor_id=sensor.id,
+            status=SensorStatus.online,
+            last_seen=sensor.last_seen,
+        )
     if open_event is not None:
         await downtime_repository.close_event(session, open_event, now)
         logger.info("Sensor %s online, offline event closed", sensor.name)

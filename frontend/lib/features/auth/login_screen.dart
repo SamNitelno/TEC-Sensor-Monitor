@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/widgets/auth_scaffold.dart';
@@ -31,10 +32,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _loginController.text.trim(),
           _passwordController.text,
         );
-    final error = ref.read(authProvider).error;
-    if (error != null && mounted) {
+    if (!mounted) return;
+    final authState = ref.read(authProvider);
+    if (authState.hasError) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.loginError(error.toString()))),
+        SnackBar(content: Text(friendlyApiError(authState.error!, l10n))),
       );
     }
   }
@@ -60,6 +62,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             controller: _passwordController,
             decoration: InputDecoration(
               labelText: l10n.passwordLabel,
+              helperText: l10n.passwordHelper,
+              helperMaxLines: 2,
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,

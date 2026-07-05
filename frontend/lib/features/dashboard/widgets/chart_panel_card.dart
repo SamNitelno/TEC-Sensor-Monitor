@@ -6,6 +6,7 @@ import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/features/dashboard/chart_series_utils.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
+import 'package:tek_sensor_monitor/features/dashboard/dashboard_ws.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/chart_time_control_bar.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/current_chart.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/group_filter_panel.dart';
@@ -38,7 +39,7 @@ class ChartPanelCard extends ConsumerWidget {
     final panels = ref.watch(chartPanelsProvider);
     final panel = panels.firstWhere((p) => p.id == panelId);
     final range = ref.watch(panelTimeRangeProvider(panelId));
-    final readingsAsync = ref.watch(panelReadingsProvider(panelId));
+    final readingsAsync = ref.watch(mergedPanelReadingsProvider(panelId));
     final cachedReadings = ref.watch(panelReadingsCacheProvider(panelId));
     final downtimeEventsAsync = ref.watch(panelDowntimeEventsProvider(panelId));
     final downtimeSummaryAsync = ref.watch(panelDowntimeSummaryProvider(panelId));
@@ -114,11 +115,12 @@ class ChartPanelCard extends ConsumerWidget {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 96),
+                      constraints: const BoxConstraints(maxHeight: 160),
                       child: ScrollConfiguration(
                         behavior: ScrollConfiguration.of(context)
                             .copyWith(scrollbars: false),
                         child: SingleChildScrollView(
+                          physics: const ClampingScrollPhysics(),
                           child: GroupFilterPanel(
                     embedded: true,
                     workshopsAsync: workshopsAsync,

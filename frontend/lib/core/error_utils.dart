@@ -11,7 +11,15 @@ String friendlyApiError(Object error, AppLocalizations l10n) {
       case DioExceptionType.badResponse:
         final code = error.response?.statusCode;
         final detail = _extractDetail(error.response?.data);
-        if (detail != null) return detail;
+        if (detail != null) {
+          if (detail == 'Invalid login or password') {
+            return l10n.errorInvalidCredentials;
+          }
+          if (detail == 'Wrong current password') {
+            return l10n.errorWrongCurrentPassword;
+          }
+          return detail;
+        }
         if (code == 401) return l10n.errorAuthRequired;
         if (code == 403) return l10n.errorForbidden;
         return l10n.errorServer(code ?? 0);

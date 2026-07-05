@@ -11,3 +11,6 @@ CONTEXT.md
 .cursor/
 firmware/src/secrets.h
 firmware/.pio/
+infra/tls/*.key
+infra/tls/*.crt
+!infra/tls/.gitkeep

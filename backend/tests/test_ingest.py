@@ -159,6 +159,35 @@ async def test_ingest_duplicate_device_timestamp_updates_reading(
 
 
 @pytest.mark.asyncio
+async def test_ingest_rejects_out_of_range_current(
+    client: AsyncClient,
+    test_sensor_token: tuple[int, str],
+) -> None:
+    _, token = test_sensor_token
+    response = await client.post(
+        "/api/v1/ingest",
+        headers={"X-Device-Token": token},
+        json={"current_a": 99999.0},
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_ingest_rejects_oversized_batch(
+    client: AsyncClient,
+    test_sensor_token: tuple[int, str],
+) -> None:
+    _, token = test_sensor_token
+    batch = [{"current_a": 1.0} for _ in range(101)]
+    response = await client.post(
+        "/api/v1/ingest",
+        headers={"X-Device-Token": token},
+        json=batch,
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_ingest_stale_device_timestamp_uses_server_time(
     client: AsyncClient,
     db_session: AsyncSession,

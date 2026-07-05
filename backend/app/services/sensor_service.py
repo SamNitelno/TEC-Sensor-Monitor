@@ -38,7 +38,7 @@ def _to_detail(sensor: Sensor) -> SensorDetail:
 
 
 def build_integration_snippet(api_token: str) -> IntegrationSnippet:
-    base = settings.api_public_base_url.rstrip("/")
+    base = settings.resolved_device_ingest_base_url
     url = f"{base}/api/v1/ingest"
     headers = {
         "Content-Type": "application/json",
@@ -230,7 +230,7 @@ async def get_provisioning_token(
     sensor = await sensor_repository.get_by_id(session, sensor_id)
     if sensor is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sensor not found")
-    base = settings.api_public_base_url.rstrip("/")
+    base = settings.resolved_device_ingest_base_url
     return ProvisioningTokenResponse(
         api_token=sensor.api_token,
         ingest_url=f"{base}/api/v1/ingest",

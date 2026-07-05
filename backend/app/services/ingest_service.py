@@ -2,10 +2,12 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.sensor import Sensor
+from app.core.config import settings
+from app.models.sensor import Sensor, SensorStatus
 from app.repositories import reading_repository, sensor_repository
 from app.schemas.ingest import ReadingIn
 from app.services.downtime_detection_service import handle_telemetry_activity
+from app.services.ws_manager import ws_manager
 
 _MAX_DEVICE_CLOCK_SKEW = timedelta(seconds=30)
 _MIN_VALID_TIME = datetime(2024, 1, 1, tzinfo=UTC)
@@ -53,4 +55,19 @@ async def ingest_readings(
     await sensor_repository.update_last_seen(session, sensor.id, received_at)
     await handle_telemetry_activity(session, sensor, readings, received_at)
     await session.commit()
+
+    if accepted and readings:
+        last_index = len(readings) - 1
+        await ws_manager.broadcast_reading(
+            sensor_id=sensor.id,
+            current_a=readings[last_index].current_a,
+            power_w=readings[last_index].power_w,
+            ts=timestamps[last_index],
+        )
+        await ws_manager.broadcast_sensor_status(
+            sensor_id=sensor.id,
+            status=SensorStatus.online,
+            last_seen=received_at,
+        )
+
     return accepted

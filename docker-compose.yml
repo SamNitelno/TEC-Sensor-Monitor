@@ -29,5 +29,15 @@ services:
       - ./backend:/app
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
+  mosquitto:
+    profiles: ["mqtt"]
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+
 volumes:
   timescaledb_data:
+  mosquitto_data:

@@ -19,6 +19,7 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _loginController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
@@ -65,28 +66,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _submit() async {
     final l10n = context.l10n;
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
     final login = _loginController.text.trim();
     final password = _passwordController.text;
-    final confirm = _confirmController.text;
-
-    final passwordError = validatePassword(password, l10n);
-    if (passwordError != null) {
-      _showError(passwordError);
-      return;
-    }
-    if (password != confirm) {
-      _showError(l10n.passwordsDoNotMatch);
-      return;
-    }
     if (_loginAvailable == false) {
       _showError(l10n.loginAlreadyTaken);
       return;
     }
 
     await ref.read(authProvider.notifier).register(login, password);
-    final error = ref.read(authProvider).error;
-    if (error != null && mounted) {
-      _showError(friendlyApiError(error, l10n));
+    if (!mounted) return;
+    final authState = ref.read(authProvider);
+    if (authState.hasError) {
+      _showError(friendlyApiError(authState.error!, l10n));
     }
   }
 
@@ -113,45 +107,65 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return AuthScaffold(
       title: l10n.registerTitle,
       subtitle: l10n.registerSubtitle,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: _loginController,
-            decoration: InputDecoration(
-              labelText: l10n.loginLabel,
-              helperText: loginHelper,
-              suffixIcon: _loginAvailable == true
-                  ? const Icon(Icons.check_circle_outline, color: TekColors.success)
-                  : _loginAvailable == false
-                      ? const Icon(Icons.cancel_outlined, color: TekColors.error)
-                      : null,
-            ),
-            onChanged: (value) => _scheduleLoginCheck(value.trim()),
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _passwordController,
-            decoration: InputDecoration(
-              labelText: l10n.passwordLabel,
-              helperText: l10n.passwordHelper,
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                ),
-                onPressed: () => setState(() => _obscure = !_obscure),
+      child: Form(
+        key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: _loginController,
+              decoration: InputDecoration(
+                labelText: l10n.loginLabel,
+                helperText: loginHelper,
+                suffixIcon: _loginAvailable == true
+                    ? const Icon(Icons.check_circle_outline, color: TekColors.success)
+                    : _loginAvailable == false
+                        ? const Icon(Icons.cancel_outlined, color: TekColors.error)
+                        : null,
               ),
+              onChanged: (value) => _scheduleLoginCheck(value.trim()),
+              textInputAction: TextInputAction.next,
+              validator: (value) {
+                final login = value?.trim() ?? '';
+                if (login.length < 3) {
+                  return l10n.loginMinLength;
+                }
+                return null;
+              },
             ),
-            obscureText: _obscure,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _confirmController,
-            decoration: InputDecoration(labelText: l10n.confirmPasswordLabel),
-            obscureText: _obscure,
-            onSubmitted: (_) => _submit(),
-          ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _passwordController,
+              decoration: InputDecoration(
+                labelText: l10n.passwordLabel,
+                helperText: l10n.passwordHelper,
+                helperMaxLines: 2,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () => setState(() => _obscure = !_obscure),
+                ),
+              ),
+              obscureText: _obscure,
+              validator: (value) => validatePassword(value ?? '', l10n),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _confirmController,
+              decoration: InputDecoration(
+                labelText: l10n.confirmPasswordLabel,
+              ),
+              obscureText: _obscure,
+              validator: (value) {
+                if (value != _passwordController.text) {
+                  return l10n.passwordsDoNotMatch;
+                }
+                return null;
+              },
+              onFieldSubmitted: (_) => _submit(),
+            ),
           const SizedBox(height: 24),
           FilledButton(
             onPressed: auth.isLoading ? null : _submit,
@@ -160,6 +174,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 : Text(l10n.registerButton),
           ),
         ],
+        ),
       ),
       footer: TextButton(
         onPressed: () => context.go('/login'),

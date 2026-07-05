@@ -7,6 +7,7 @@ import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
+import 'package:tek_sensor_monitor/features/dashboard/dashboard_ws.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/chart_panel_card.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -23,7 +24,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       ref.read(dashboardPollTickProvider.notifier).state++;
     });
   }
@@ -36,6 +37,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(dashboardWsServiceProvider);
     final l10n = context.l10n;
     final workshopsAsync = ref.watch(workshopsProvider);
     final panels = ref.watch(chartPanelsProvider);

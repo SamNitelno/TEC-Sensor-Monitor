@@ -16,3 +16,16 @@ String get defaultApiBaseUrl {
   }
   return apiBaseUrl;
 }
+
+/// WebSocket URL derived from [defaultApiBaseUrl] (same host, ws/wss scheme).
+String buildWebSocketUrl(String token) {
+  final base = Uri.parse(defaultApiBaseUrl);
+  final wsScheme = base.scheme == 'https' ? 'wss' : 'ws';
+  return Uri(
+    scheme: wsScheme,
+    host: base.host,
+    port: base.hasPort ? base.port : null,
+    path: '/ws',
+    queryParameters: {'token': token},
+  ).toString();
+}

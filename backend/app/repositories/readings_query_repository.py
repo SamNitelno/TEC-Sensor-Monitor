@@ -56,7 +56,8 @@ async def fetch_readings(
             SELECT bucket AS time,
                    avg_current_a AS avg,
                    min_current_a AS min,
-                   max_current_a AS max
+                   max_current_a AS max,
+                   avg_power_w AS power_w
             FROM {table}
             WHERE sensor_id = $1 AND bucket >= $2 AND bucket <= $3
             ORDER BY bucket ASC
@@ -76,7 +77,7 @@ async def fetch_readings(
             max=float(row["max"]),
             power_w=(
                 float(row["power_w"])
-                if bucket == BucketParam.raw and row.get("power_w") is not None
+                if row.get("power_w") is not None
                 else None
             ),
         )

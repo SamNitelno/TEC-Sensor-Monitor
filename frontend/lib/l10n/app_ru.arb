@@ -72,6 +72,9 @@
   "signIn": "Войти",
   "noAccountRegister": "Нет аккаунта? Зарегистрироваться",
   "loginError": "Ошибка входа: {error}",
+  "errorInvalidCredentials": "Неверный логин или пароль",
+  "errorWrongCurrentPassword": "Неверный текущий пароль",
+  "errorPasswordRequired": "Введите пароль",
   "@loginError": {
     "placeholders": {
       "error": {"type": "String"}
@@ -85,6 +88,7 @@
   "hasAccountLogin": "Уже есть аккаунт? Войти",
   "loginAvailable": "Логин свободен",
   "loginTaken": "Логин занят",
+  "loginMinLength": "Минимум 3 символа",
   "loginAlreadyTaken": "Логин уже занят",
   "passwordsDoNotMatch": "Пароли не совпадают",
   "passwordMinLength": "Минимум 8 символов",

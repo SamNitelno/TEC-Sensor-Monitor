@@ -218,6 +218,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get errorInvalidCredentials => 'Invalid login or password';
+
+  @override
+  String get errorWrongCurrentPassword => 'Current password is incorrect';
+
+  @override
+  String get errorPasswordRequired => 'Enter a password';
+
+  @override
   String get registerTitle => 'Registration';
 
   @override
@@ -240,6 +249,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loginTaken => 'Login is taken';
+
+  @override
+  String get loginMinLength => 'At least 3 characters';
 
   @override
   String get loginAlreadyTaken => 'Login is already taken';

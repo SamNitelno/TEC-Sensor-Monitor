@@ -20,6 +20,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  final _passwordFormKey = GlobalKey<FormState>();
   final _loginController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -101,14 +102,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _changePassword() async {
     final l10n = context.l10n;
-    final newPassword = _newPasswordController.text;
-    final passwordError = validatePassword(newPassword, l10n);
-    if (passwordError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(passwordError)),
-      );
+    if (!(_passwordFormKey.currentState?.validate() ?? false)) {
       return;
     }
+    final newPassword = _newPasswordController.text;
     if (newPassword != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.passwordsDoNotMatch)),
@@ -210,51 +207,82 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(l10n.changePasswordTitle,
-                        style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _currentPasswordController,
-                      decoration: InputDecoration(
-                        labelText: l10n.currentPasswordLabel,
-                        border: const OutlineInputBorder(),
+                child: Form(
+                  key: _passwordFormKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(l10n.changePasswordTitle,
+                          style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.passwordHelper,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                       ),
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _newPasswordController,
-                      decoration: InputDecoration(
-                        labelText: l10n.newPasswordLabel,
-                        border: const OutlineInputBorder(),
-                        helperText: l10n.passwordHelper,
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _currentPasswordController,
+                        decoration: InputDecoration(
+                          labelText: l10n.currentPasswordLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                        obscureText: true,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return l10n.errorPasswordRequired;
+                          }
+                          return null;
+                        },
                       ),
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _confirmPasswordController,
-                      decoration: InputDecoration(
-                        labelText: l10n.confirmPasswordFieldLabel,
-                        border: const OutlineInputBorder(),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _newPasswordController,
+                        decoration: InputDecoration(
+                          labelText: l10n.newPasswordLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                        obscureText: true,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return l10n.errorPasswordRequired;
+                          }
+                          return validatePassword(value, l10n);
+                        },
                       ),
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _savingPassword ? null : _changePassword,
-                      child: _savingPassword
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(l10n.changePasswordButton),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        decoration: InputDecoration(
+                          labelText: l10n.confirmPasswordFieldLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                        obscureText: true,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return l10n.errorPasswordRequired;
+                          }
+                          if (value != _newPasswordController.text) {
+                            return l10n.passwordsDoNotMatch;
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: _savingPassword ? null : _changePassword,
+                        child: _savingPassword
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(l10n.changePasswordButton),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

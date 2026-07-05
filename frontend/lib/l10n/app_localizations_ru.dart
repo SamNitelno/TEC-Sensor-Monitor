@@ -219,6 +219,15 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get errorInvalidCredentials => 'Неверный логин или пароль';
+
+  @override
+  String get errorWrongCurrentPassword => 'Неверный текущий пароль';
+
+  @override
+  String get errorPasswordRequired => 'Введите пароль';
+
+  @override
   String get registerTitle => 'Регистрация';
 
   @override
@@ -241,6 +250,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get loginTaken => 'Логин занят';
+
+  @override
+  String get loginMinLength => 'Минимум 3 символа';
 
   @override
   String get loginAlreadyTaken => 'Логин уже занят';

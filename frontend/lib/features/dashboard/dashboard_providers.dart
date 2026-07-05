@@ -7,7 +7,7 @@ import 'package:tek_sensor_monitor/models/reading_point.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
 
-/// Bumped every 5 s on the dashboard to slide live time windows forward.
+/// Bumped every 1 s on the dashboard to slide live time windows forward.
 final dashboardPollTickProvider = StateProvider<int>((ref) => 0);
 
 class ChartPanelsNotifier extends StateNotifier<List<ChartPanelConfig>> {
@@ -199,7 +199,6 @@ final panelTimeRangeProvider = Provider.family<TimeRange, String>((ref, panelId)
 
 final panelReadingsProvider =
     FutureProvider.family<GroupedReadingsResponse, String>((ref, panelId) async {
-  ref.watch(dashboardPollTickProvider);
   final client = ref.watch(apiClientProvider);
   final panel = panelConfig(ref, panelId);
   final range = ref.watch(panelTimeRangeProvider(panelId));

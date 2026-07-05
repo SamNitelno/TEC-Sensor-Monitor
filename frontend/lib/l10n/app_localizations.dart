@@ -494,6 +494,24 @@ abstract class AppLocalizations {
   /// **'Ошибка входа: {error}'**
   String loginError(String error);
 
+  /// No description provided for @errorInvalidCredentials.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неверный логин или пароль'**
+  String get errorInvalidCredentials;
+
+  /// No description provided for @errorWrongCurrentPassword.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неверный текущий пароль'**
+  String get errorWrongCurrentPassword;
+
+  /// No description provided for @errorPasswordRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Введите пароль'**
+  String get errorPasswordRequired;
+
   /// No description provided for @registerTitle.
   ///
   /// In ru, this message translates to:
@@ -541,6 +559,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Логин занят'**
   String get loginTaken;
+
+  /// No description provided for @loginMinLength.
+  ///
+  /// In ru, this message translates to:
+  /// **'Минимум 3 символа'**
+  String get loginMinLength;
 
   /// No description provided for @loginAlreadyTaken.
   ///

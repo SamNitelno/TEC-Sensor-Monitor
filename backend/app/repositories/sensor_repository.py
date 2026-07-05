@@ -178,15 +178,16 @@ async def mark_stale_offline(
     session: AsyncSession,
     *,
     older_than: datetime,
-) -> int:
+) -> list[int]:
     result = await session.execute(
         sa_update(Sensor)
         .where(Sensor.status == SensorStatus.online)
         .where(Sensor.last_seen.is_not(None))
         .where(Sensor.last_seen < older_than)
         .values(status=SensorStatus.offline)
+        .returning(Sensor.id)
     )
-    return result.rowcount or 0
+    return list(result.scalars().all())
 
 
 async def set_status(

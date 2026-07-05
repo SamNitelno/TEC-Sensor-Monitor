@@ -9,6 +9,10 @@
 #include "secrets.h"
 #endif
 
+#if defined(UPDATE_SERVER_URL) && UPDATE_SERVER_URL
+#include "secrets.h"
+#endif
+
 namespace {
 CurrentSensor* g_sensor = nullptr;
 
@@ -31,6 +35,28 @@ void startHardcodedTelemetry() {
   }
   Serial.println("HARDCODED_CONFIG: Wi-Fi OK, starting telemetry");
   runTelemetryLoop(config, *g_sensor);
+}
+#endif
+
+#if defined(UPDATE_SERVER_URL) && UPDATE_SERVER_URL
+bool patchServerUrlInNvs() {
+  DeviceConfig config;
+  if (!loadConfigFromNvs(config)) {
+    Serial.println("UPDATE_SERVER_URL: no NVS config — use BLE or esp32dev_jsy_hc");
+    return false;
+  }
+  config.serverUrl = HC_SERVER_URL;
+#ifdef HC_DEVICE_TOKEN
+  if (strlen(HC_DEVICE_TOKEN) > 0) {
+    config.deviceToken = HC_DEVICE_TOKEN;
+  }
+#endif
+  if (!saveConfigToNvs(config)) {
+    Serial.println("UPDATE_SERVER_URL: NVS save failed");
+    return false;
+  }
+  Serial.printf("UPDATE_SERVER_URL: saved %s\n", config.serverUrl.c_str());
+  return true;
 }
 #endif
 
@@ -70,6 +96,17 @@ void setup() {
   return;
 #endif
 
+#if defined(UPDATE_SERVER_URL) && UPDATE_SERVER_URL
+  if (patchServerUrlInNvs()) {
+    DeviceConfig config;
+    if (loadConfigFromNvs(config) && connectWifi(config)) {
+      Serial.println("UPDATE_SERVER_URL: starting telemetry");
+      runTelemetryLoop(config, *g_sensor);
+    }
+  }
+  return;
+#endif
+
   DeviceConfig config;
   if (loadConfigFromNvs(config) && connectWifi(config)) {
     Serial.println("Loaded config from NVS");
@@ -82,6 +119,9 @@ void setup() {
 
 void loop() {
 #if defined(HARDCODED_CONFIG) && HARDCODED_CONFIG
+  return;
+#endif
+#if defined(UPDATE_SERVER_URL) && UPDATE_SERVER_URL
   return;
 #endif
   pollBleProvisioning();

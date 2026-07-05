@@ -1,0 +1,64 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Single worker keeps WebSocket broadcasts consistent without Redis
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  nginx:
+    build:
+      context: .
+      dockerfile: infra/nginx/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/tls:/etc/nginx/tls:ro
+
+  mosquitto:
+    profiles: ["mqtt"]
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+
+volumes:
+  timescaledb_data:
+  mosquitto_data:

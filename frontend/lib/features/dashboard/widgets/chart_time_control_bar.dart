@@ -33,13 +33,18 @@ class ChartTimeControlBar extends StatelessWidget {
             label: Text(p.label(l10n), style: theme.textTheme.labelSmall),
             labelPadding: const EdgeInsets.symmetric(horizontal: 4),
             visualDensity: VisualDensity.compact,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            materialTapTargetSize: MaterialTapTargetSize.padded,
             selected: presetSelected && preset == p,
             selectedColor: theme.colorScheme.secondaryContainer,
             labelStyle: (presetSelected && preset == p)
                 ? theme.chipTheme.secondaryLabelStyle
                 : theme.chipTheme.labelStyle,
-            onSelected: (_) => onPreset(p),
+            onSelected: (selected) {
+              if (!selected && presetSelected && preset == p) {
+                return;
+              }
+              onPreset(p);
+            },
           ),
         ActionChip(
           label: Text(l10n.customPeriod, style: theme.textTheme.labelSmall),
