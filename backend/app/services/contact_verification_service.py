@@ -252,8 +252,16 @@ async def verify_contact_code(
     if batch.expires_at < datetime.now(UTC):
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="Verification code expired")
 
+    if batch.failed_attempts >= settings.verification_max_attempts:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many verification attempts",
+        )
+
     if channel == "email":
         if not verify_code_hash(payload.code, batch.email_code_hash):
+            batch.failed_attempts += 1
+            await session.flush()
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification code")
         batch.email_verified = True
         batch.email_code_hash = None
@@ -289,6 +297,8 @@ async def verify_contact_code(
             detail="Confirm email before phone",
         )
     if not verify_code_hash(payload.code, batch.phone_code_hash):
+        batch.failed_attempts += 1
+        await session.flush()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification code")
 
     result = await _apply_batch(session, user, batch)

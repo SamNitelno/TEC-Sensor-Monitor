@@ -11,6 +11,7 @@ from app.services.sensor_status import effective_status
 from app.schemas.sensor import (
     IntegrationSnippet,
     ProvisioningTokenResponse,
+    RotateTokenResponse,
     SensorAuditInfo,
     SensorCreate,
     SensorCreateResponse,
@@ -232,6 +233,27 @@ async def get_provisioning_token(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sensor not found")
     base = settings.resolved_device_ingest_base_url
     return ProvisioningTokenResponse(
-        api_token=sensor.api_token,
+        api_token=None,
+        ingest_url=f"{base}/api/v1/ingest",
+        message=(
+            "Токен устройства недоступен после создания. "
+            "Для BLE-привязки используйте POST /sensors/{id}/rotate-token."
+        ),
+    )
+
+
+async def rotate_device_token(
+    session: AsyncSession,
+    sensor_id: int,
+) -> RotateTokenResponse:
+    sensor = await sensor_repository.get_by_id(session, sensor_id)
+    if sensor is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sensor not found")
+    new_token = secrets.token_urlsafe(32)
+    await sensor_repository.update_api_token(session, sensor, new_token)
+    await session.commit()
+    base = settings.resolved_device_ingest_base_url
+    return RotateTokenResponse(
+        api_token=new_token,
         ingest_url=f"{base}/api/v1/ingest",
     )

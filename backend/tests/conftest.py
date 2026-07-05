@@ -6,9 +6,18 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-os.environ.setdefault("VERIFICATION_DELIVERY_MODE", "test")
+# Override prod .env injected by docker-compose so dev-only flows are testable.
+os.environ["APP_ENV"] = "development"
+os.environ["ALLOW_PUBLIC_REGISTRATION"] = "true"
+os.environ["VERIFICATION_DELIVERY_MODE"] = "test"
+os.environ.setdefault("VIEWER_PASSWORD", "viewer")
+os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-pytest-only-32chars")
+os.environ.setdefault("ADMIN_PASSWORD", "admin")
+os.environ["AUTH_LOGIN_RATE_LIMIT"] = "1000/minute"
+os.environ["AUTH_REGISTER_RATE_LIMIT"] = "1000/minute"
+os.environ["AUTH_VERIFY_RATE_LIMIT"] = "1000/minute"
 
-from app.db.base import Base
+from app.core.config import settings
 from app.db.session import get_db
 from app.main import app
 
@@ -43,9 +52,9 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 async def admin_token(client: AsyncClient) -> str:
     response = await client.post(
         "/api/v1/auth/login",
-        json={"login": "admin", "password": "admin"},
+        json={"login": settings.admin_login, "password": settings.admin_password},
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     return response.json()["access_token"]
 
 
@@ -53,9 +62,9 @@ async def admin_token(client: AsyncClient) -> str:
 async def viewer_token(client: AsyncClient) -> str:
     response = await client.post(
         "/api/v1/auth/login",
-        json={"login": "viewer", "password": "viewer"},
+        json={"login": settings.viewer_login, "password": settings.viewer_password},
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     return response.json()["access_token"]
 
 
@@ -63,6 +72,7 @@ async def viewer_token(client: AsyncClient) -> str:
 async def test_sensor_token(db_session: AsyncSession) -> tuple[int, str]:
     from sqlalchemy import select
 
+    from app.core.device_token import is_hashed_device_token
     from app.models.sensor import Sensor
 
     result = await db_session.execute(
@@ -71,4 +81,6 @@ async def test_sensor_token(db_session: AsyncSession) -> tuple[int, str]:
     sensor = result.scalar_one_or_none()
     if sensor is None:
         pytest.skip("TEST-ESP-001 sensor not seeded")
+    if is_hashed_device_token(sensor.api_token):
+        pytest.skip("Cannot recover plaintext token for hashed sensor in tests")
     return sensor.id, sensor.api_token

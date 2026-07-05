@@ -1,4 +1,3 @@
-import hashlib
 import logging
 import re
 import secrets
@@ -60,6 +59,8 @@ def generate_verification_code() -> str:
 
 
 def hash_verification_code(code: str) -> str:
+    import hashlib
+
     payload = f"{code}:{settings.jwt_secret}".encode()
     return hashlib.sha256(payload).hexdigest()
 
@@ -87,13 +88,22 @@ def _send_for_real() -> bool:
     return _delivery_mode() == "production"
 
 
+def _log_dev_code(channel: str, destination: str) -> None:
+    """Explicit dev-only path - never log the code itself."""
+    logger.debug(
+        "Verification code generated (%s) for %s",
+        channel,
+        mask_email(destination) if channel == "email" else mask_phone(destination),
+    )
+
+
 def format_delivery_error(exc: Exception) -> str:
     if isinstance(exc, smtplib.SMTPAuthenticationError):
         return (
             "Gmail отклонил логин или пароль SMTP. "
             "Нужен пароль приложения Google (16 символов), не обычный пароль аккаунта: "
             "https://myaccount.google.com/apppasswords "
-            "Либо установите VERIFICATION_DELIVERY_MODE=log и смотрите код в логах backend."
+            "Либо установите VERIFICATION_DELIVERY_MODE=log."
         )
     return str(exc)
 
@@ -109,16 +119,18 @@ async def send_email_verification_code(*, to_email: str, code: str) -> None:
 
     mode = _delivery_mode()
     if mode == "test":
-        logger.info("TEST email code for %s: %s", to_email, code)
+        logger.info("TEST email verification queued for %s", mask_email(to_email))
         return
 
-    logger.info("Email verification code for %s: %s", to_email, code)
+    if mode == "log":
+        _log_dev_code("email", to_email)
+        logger.info(
+            "VERIFICATION_DELIVERY_MODE=log - email not sent to %s",
+            mask_email(to_email),
+        )
+        return
 
     if not _send_for_real():
-        logger.info(
-            "VERIFICATION_DELIVERY_MODE=%s — письмо не отправляется, код только в логе",
-            mode,
-        )
         return
 
     if not settings.verification_smtp_password:
@@ -136,6 +148,7 @@ async def send_email_verification_code(*, to_email: str, code: str) -> None:
         smtp.starttls()
         smtp.login(settings.verification_smtp_user, settings.verification_smtp_password)
         smtp.send_message(message)
+    logger.info("Verification email sent to %s", mask_email(to_email))
 
 
 async def send_sms_verification_code(*, to_phone: str, code: str) -> None:
@@ -145,30 +158,40 @@ async def send_sms_verification_code(*, to_phone: str, code: str) -> None:
 
     mode = _delivery_mode()
     if mode == "test":
-        logger.info("TEST SMS code for %s: %s", normalized, code)
+        logger.info("TEST SMS verification queued for %s", mask_phone(normalized))
         return
 
-    logger.info("SMS verification code for %s: %s", normalized, code)
+    if mode == "log":
+        _log_dev_code("phone", normalized)
+        logger.info(
+            "VERIFICATION_DELIVERY_MODE=log - SMS not sent to %s",
+            mask_phone(normalized),
+        )
+        return
 
     if not _send_for_real():
-        logger.info(
-            "VERIFICATION_DELIVERY_MODE=%s — SMS не отправляется, код только в логе",
-            mode,
-        )
         return
 
     if not settings.verification_sms_api_id:
         raise RuntimeError("VERIFICATION_SMS_API_ID не задан")
 
-    params = urllib.parse.urlencode(
+    payload = urllib.parse.urlencode(
         {
-            "api_id": settings.verification_sms_api_id,
             "to": normalized,
             "msg": text,
             "json": "1",
         }
+    ).encode()
+    url = "https://sms.ru/sms/send"
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": f"Bearer {settings.verification_sms_api_id}",
+        },
+        method="POST",
     )
-    url = f"https://sms.ru/sms/send?{params}"
-    with urllib.request.urlopen(url, timeout=20) as response:
-        payload = response.read().decode("utf-8", errors="replace")
-        logger.info("SMS.ru response: %s", payload)
+    with urllib.request.urlopen(req, timeout=20) as response:
+        response.read()
+    logger.info("Verification SMS sent to %s", mask_phone(normalized))

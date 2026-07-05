@@ -1,6 +1,6 @@
 # Production deploy: Flutter Web build + docker compose prod stack.
 # Usage: .\scripts\build-prod.ps1
-#        .\scripts\build-prod.ps1 -ApiBaseUrl "https://192.168.0.181"
+#        .\scripts\build-prod.ps1 -ApiBaseUrl "https://192.168.1.100"
 
 param(
     [string]$ApiBaseUrl = ""
@@ -32,7 +32,7 @@ if (-not $ApiBaseUrl) {
 $TlsDir = Join-Path $Root "infra/tls"
 $CrtPath = Join-Path $TlsDir "server.crt"
 if (-not (Test-Path $CrtPath)) {
-    Write-Host "TLS certificate missing — generating self-signed cert..."
+    Write-Host "TLS certificate missing - generating self-signed cert..."
     $cn = ($ApiBaseUrl -replace '^https?://', '' -replace '/.*$', '' -replace ':.*$', '')
     if (-not $cn) { $cn = "localhost" }
     & (Join-Path $PSScriptRoot "generate-tls.ps1") -OutDir $TlsDir -Cn $cn
@@ -60,4 +60,4 @@ try {
     Pop-Location
 }
 
-Write-Host "Done. Open $ApiBaseUrl/ (accept self-signed TLS if prompted)."
+Write-Host ('Done. Open ' + $ApiBaseUrl + '/ (accept self-signed TLS if prompted).')

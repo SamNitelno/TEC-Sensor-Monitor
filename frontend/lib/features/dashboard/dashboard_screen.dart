@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
-import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_ws.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/chart_panel_card.dart';
+import 'package:tek_sensor_monitor/features/dashboard/widgets/dashboard_alerts_bar.dart';
+import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -19,7 +20,6 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Timer? _refreshTimer;
-  bool _connectionSnackShown = false;
 
   @override
   void initState() {
@@ -42,21 +42,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final workshopsAsync = ref.watch(workshopsProvider);
     final panels = ref.watch(chartPanelsProvider);
     final connectionIssue = _connectionIssue(workshopsAsync, l10n);
-
-    if (connectionIssue != null && !_connectionSnackShown) {
-      _connectionSnackShown = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(connectionIssue),
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      });
-    } else if (connectionIssue == null) {
-      _connectionSnackShown = false;
-    }
 
     return SizedBox.expand(
       child: Padding(
@@ -84,6 +69,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ],
             ),
             const SizedBox(height: 8),
+            DashboardAlertsBar(connectionIssue: connectionIssue),
             Expanded(
               child: _DashboardChartGrid(
                 panels: panels,
@@ -114,7 +100,7 @@ class _DashboardChartGrid extends StatelessWidget {
   final String? connectionIssue;
 
   static const _gap = 12.0;
-  static const _minTileHeight = 300.0;
+  static const _minChartHeight = 280.0;
 
   @override
   Widget build(BuildContext context) {
@@ -122,13 +108,13 @@ class _DashboardChartGrid extends StatelessWidget {
       builder: (context, constraints) {
         final cols = dashboardGridColumns(panels.length, constraints.maxWidth);
         final rows = (panels.length / cols).ceil();
-        final totalMinHeight = rows * _minTileHeight + (rows - 1) * _gap;
+        final totalMinHeight = rows * _minChartHeight + (rows - 1) * _gap;
         final scrollable = totalMinHeight > constraints.maxHeight;
         final tileHeight = scrollable
-            ? _minTileHeight
+            ? _minChartHeight
             : (constraints.maxHeight - (rows - 1) * _gap) / rows;
 
-        final grid = GridView.builder(
+        return GridView.builder(
           padding: EdgeInsets.zero,
           physics: scrollable
               ? const AlwaysScrollableScrollPhysics()
@@ -151,8 +137,6 @@ class _DashboardChartGrid extends StatelessWidget {
             );
           },
         );
-
-        return grid;
       },
     );
   }

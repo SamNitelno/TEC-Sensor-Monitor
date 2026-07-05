@@ -42,7 +42,6 @@ class ChartPanelCard extends ConsumerWidget {
     final readingsAsync = ref.watch(mergedPanelReadingsProvider(panelId));
     final cachedReadings = ref.watch(panelReadingsCacheProvider(panelId));
     final downtimeEventsAsync = ref.watch(panelDowntimeEventsProvider(panelId));
-    final downtimeSummaryAsync = ref.watch(panelDowntimeSummaryProvider(panelId));
     final workshopsAsync = ref.watch(workshopsProvider);
     final sitesAsync = ref.watch(panelSitesProvider(panelId));
     final sensorsAsync = ref.watch(panelSensorsProvider(panelId));
@@ -158,17 +157,6 @@ class ChartPanelCard extends ConsumerWidget {
               hasCustom: hasCustom,
               onPreset: (value) => updatePanelPreset(ref, panelId, value),
               onCustom: () => _pickCustomRange(context, ref, panel),
-            ),
-            const SizedBox(height: 4),
-            _DowntimeSummaryBar(
-              summaryAsync: downtimeSummaryAsync,
-              openEvents: downtimeEventsAsync.valueOrNull
-                      ?.where((e) => e.isOpen)
-                      .toList() ??
-                  const [],
-              workshopFilterIds: panel.workshopIds,
-              siteFilterIds: panel.siteIds,
-              l10n: l10n,
             ),
             const SizedBox(height: 4),
             Expanded(
@@ -567,123 +555,6 @@ List<ChartDowntimeBand> _offlineBandsForChart(
     );
   }
   return bands;
-}
-
-class _DowntimeSummaryBar extends StatelessWidget {
-  const _DowntimeSummaryBar({
-    required this.summaryAsync,
-    required this.openEvents,
-    required this.l10n,
-    this.workshopFilterIds = const {},
-    this.siteFilterIds = const {},
-  });
-
-  final AsyncValue<DowntimeSummary> summaryAsync;
-  final List<DowntimeEvent> openEvents;
-  final AppLocalizations l10n;
-  final Set<int> workshopFilterIds;
-  final Set<int> siteFilterIds;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return summaryAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (summary) {
-        final filteredOpenEvents = openEvents.where((event) {
-          if (workshopFilterIds.isNotEmpty &&
-              event.workshopId != null &&
-              !workshopFilterIds.contains(event.workshopId)) {
-            return false;
-          }
-          if (siteFilterIds.isNotEmpty &&
-              event.siteId != null &&
-              !siteFilterIds.contains(event.siteId)) {
-            return false;
-          }
-          return true;
-        }).toList();
-        final filteredWorkshops = workshopFilterIds.isEmpty
-            ? summary.workshops
-            : summary.workshops
-                .where((w) => workshopFilterIds.contains(w.workshopId))
-                .toList();
-        final totalOffline = summary.sensors.fold<double>(
-          0,
-          (sum, row) => sum + row.offlineSeconds,
-        );
-        final totalIdle = summary.sensors.fold<double>(
-          0,
-          (sum, row) => sum + row.idleSeconds,
-        );
-        if (filteredOpenEvents.isEmpty &&
-            totalOffline <= 0 &&
-            totalIdle <= 0 &&
-            filteredWorkshops.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        return Wrap(
-          spacing: 4,
-          runSpacing: 2,
-          children: [
-            for (final event in filteredOpenEvents)
-              Chip(
-                avatar: Icon(
-                  event.isOffline ? Icons.cloud_off : Icons.pause_circle_outline,
-                  size: 12,
-                ),
-                label: Text(
-                  event.isOffline
-                      ? l10n.downtimeOfflineChip(event.sensorName)
-                      : l10n.downtimeIdleChip(event.sensorName),
-                  style: theme.textTheme.labelSmall,
-                ),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                labelPadding: const EdgeInsets.only(right: 4),
-              ),
-            if (totalOffline > 0)
-              Chip(
-                avatar: const Icon(Icons.cloud_off, size: 12),
-                label: Text(
-                  l10n.downtimeOfflineTotal(
-                    formatDowntimeDuration(totalOffline, l10n),
-                  ),
-                  style: theme.textTheme.labelSmall,
-                ),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            if (totalIdle > 0)
-              Chip(
-                avatar: const Icon(Icons.pause_circle_outline, size: 12),
-                label: Text(
-                  l10n.downtimeIdleTotal(
-                    formatDowntimeDuration(totalIdle, l10n),
-                  ),
-                  style: theme.textTheme.labelSmall,
-                ),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            for (final workshop in filteredWorkshops)
-              Chip(
-                label: Text(
-                  l10n.workshopDowntimeChip(
-                    workshop.workshopName,
-                    formatDowntimeDuration(workshop.totalSeconds, l10n),
-                  ),
-                  style: theme.textTheme.labelSmall,
-                ),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-          ],
-        );
-      },
-    );
-  }
 }
 
 class ChartMessagePanel extends StatelessWidget {

@@ -8,7 +8,9 @@ frontend/build/
 *.iml
 .idea/
 CONTEXT.md
+.agents/
 .cursor/
+skills-lock.json
 firmware/src/secrets.h
 firmware/.pio/
 infra/tls/*.key

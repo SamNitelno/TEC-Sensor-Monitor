@@ -1,11 +1,11 @@
 # Generate self-signed TLS cert for local LAN (Windows / cross-platform via OpenSSL).
 # Usage: .\scripts\generate-tls.ps1
-#        .\scripts\generate-tls.ps1 -Cn "192.168.0.181"
+#        .\scripts\generate-tls.ps1 -Cn "192.168.1.100"
 
 param(
     [string]$OutDir = "",
     [int]$Days = 3650,
-    [string]$Cn = "192.168.0.181"
+    [string]$Cn = "localhost"
 )
 
 $ErrorActionPreference = "Stop"

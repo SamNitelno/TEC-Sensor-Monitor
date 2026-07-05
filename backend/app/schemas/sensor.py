@@ -77,8 +77,18 @@ class SensorCreateResponse(BaseModel):
 
 
 class ProvisioningTokenResponse(BaseModel):
+    ingest_url: str
+    api_token: str | None = None
+    message: str | None = None
+
+
+class RotateTokenResponse(BaseModel):
     api_token: str
     ingest_url: str
+    warning: str = (
+        "Новый токен устройства. Сохраните его сейчас — предыдущий токен больше не действует. "
+        "Обновите прошивку или BLE-привязку."
+    )
 
 
 class BucketParam(str, Enum):

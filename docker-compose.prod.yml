@@ -24,7 +24,7 @@ services:
     env_file:
       - .env
     environment:
-      # Single worker keeps WebSocket broadcasts consistent without Redis
+      APP_ENV: production
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
     expose:
       - "8000"
@@ -53,10 +53,11 @@ services:
     profiles: ["mqtt"]
     image: eclipse-mosquitto:2
     restart: unless-stopped
-    ports:
-      - "1883:1883"
+    expose:
+      - "1883"
     volumes:
       - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/passwd:/mosquitto/config/passwd:ro
       - mosquitto_data:/mosquitto/data
 
 volumes:

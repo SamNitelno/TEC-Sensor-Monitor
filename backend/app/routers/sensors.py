@@ -13,6 +13,7 @@ from app.schemas.sensor import (
     BucketParam,
     GroupedReadingsResponse,
     ProvisioningTokenResponse,
+    RotateTokenResponse,
     ReadingsResponse,
     SensorAuditInfo,
     SensorCreate,
@@ -107,6 +108,15 @@ async def get_provisioning_token(
     _: Annotated[User, Depends(require_admin)],
 ) -> ProvisioningTokenResponse:
     return await sensor_service.get_provisioning_token(db, sensor_id)
+
+
+@router.post("/{sensor_id}/rotate-token", response_model=RotateTokenResponse)
+async def rotate_sensor_token(
+    sensor_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_admin)],
+) -> RotateTokenResponse:
+    return await sensor_service.rotate_device_token(db, sensor_id)
 
 
 @router.post("", response_model=SensorCreateResponse, status_code=status.HTTP_201_CREATED)

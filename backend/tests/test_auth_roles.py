@@ -11,7 +11,7 @@ from app.core.config import settings
 async def test_login_returns_jwt_with_role_and_exp(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/auth/login",
-        json={"login": "admin", "password": "admin"},
+        json={"login": settings.admin_login, "password": settings.admin_password},
     )
     assert response.status_code == 200
     body = response.json()
@@ -74,12 +74,12 @@ async def test_viewer_forbidden_on_mutations(
 
 
 @pytest.mark.asyncio
-async def test_admin_can_fetch_provisioning_token(
+async def test_admin_provisioning_returns_ingest_url_only(
     client: AsyncClient,
     admin_token: str,
     test_sensor_token: tuple[int, str],
 ) -> None:
-    sensor_id, expected_token = test_sensor_token
+    sensor_id, _ = test_sensor_token
     headers = {"Authorization": f"Bearer {admin_token}"}
     response = await client.get(
         f"/api/v1/sensors/{sensor_id}/provisioning-token",
@@ -87,7 +87,7 @@ async def test_admin_can_fetch_provisioning_token(
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["api_token"] == expected_token
+    assert body["api_token"] is None
     assert body["ingest_url"].endswith("/api/v1/ingest")
 
 
@@ -109,7 +109,18 @@ async def test_viewer_cannot_fetch_provisioning_token(
 @pytest.mark.asyncio
 async def test_admin_can_create_site(client: AsyncClient, admin_token: str) -> None:
     headers = {"Authorization": f"Bearer {admin_token}"}
-    name = f"QA-site-{datetime.now(UTC).timestamp()}"
-    response = await client.post("/api/v1/sites", headers=headers, json={"name": name})
+    ts = datetime.now(UTC).timestamp()
+    workshop = await client.post(
+        "/api/v1/workshops",
+        headers=headers,
+        json={"name": f"QA-ws-{ts}"},
+    )
+    assert workshop.status_code == 201, workshop.text
+    name = f"QA-site-{ts}"
+    response = await client.post(
+        "/api/v1/sites",
+        headers=headers,
+        json={"name": name, "workshop_id": workshop.json()["id"]},
+    )
     assert response.status_code == 201
     assert response.json()["name"] == name

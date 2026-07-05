@@ -19,6 +19,7 @@ class ContactVerificationBatch(Base):
     email_code_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     phone_code_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    failed_attempts: Mapped[int] = mapped_column(nullable=False, server_default="0")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

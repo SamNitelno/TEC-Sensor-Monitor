@@ -1,9 +1,9 @@
-from datetime import datetime
+import secrets
 
 from sqlalchemy import select
-from sqlalchemy import update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.device_token import is_hashed_device_token, store_device_token
 from app.models.sensor import Sensor, SensorStatus
 from app.models.site import Site
 
@@ -36,8 +36,19 @@ async def get_by_device_id(session: AsyncSession, device_id: str) -> Sensor | No
 
 
 async def get_by_api_token(session: AsyncSession, api_token: str) -> Sensor | None:
-    result = await session.execute(select(Sensor).where(Sensor.api_token == api_token))
-    return result.scalar_one_or_none()
+    token_hash = store_device_token(api_token)
+    result = await session.execute(select(Sensor).where(Sensor.api_token == token_hash))
+    sensor = result.scalar_one_or_none()
+    if sensor is not None:
+        return sensor
+    # Legacy plaintext token (pre-migration fallback)
+    result = await session.execute(select(Sensor))
+    for candidate in result.scalars().all():
+        if not is_hashed_device_token(candidate.api_token) and secrets.compare_digest(
+            candidate.api_token, api_token
+        ):
+            return candidate
+    return None
 
 
 async def get_many_by_ids(session: AsyncSession, sensor_ids: list[int]) -> list[Sensor]:
@@ -56,11 +67,13 @@ async def create(
     site_id: int | None,
     color: str | None = None,
     created_by_user_id: int | None = None,
+    store_token_hashed: bool = True,
 ) -> Sensor:
+    stored_token = store_device_token(api_token) if store_token_hashed else api_token
     sensor = Sensor(
         name=name,
         device_id=device_id,
-        api_token=api_token,
+        api_token=stored_token,
         site_id=site_id,
         color=color,
         created_by_user_id=created_by_user_id,
@@ -68,6 +81,11 @@ async def create(
     session.add(sensor)
     await session.flush()
     return sensor
+
+
+async def update_api_token(session: AsyncSession, sensor: Sensor, plaintext_token: str) -> None:
+    sensor.api_token = store_device_token(plaintext_token)
+    await session.flush()
 
 
 async def update(
@@ -120,6 +138,8 @@ async def set_notifications_enabled_all(
     *,
     enabled: bool,
 ) -> int:
+    from sqlalchemy import update as sa_update
+
     result = await session.execute(
         sa_update(Sensor).values(notifications_enabled=enabled)
     )
@@ -132,6 +152,8 @@ async def set_notifications_enabled_for_site(
     *,
     enabled: bool,
 ) -> int:
+    from sqlalchemy import update as sa_update
+
     result = await session.execute(
         sa_update(Sensor)
         .where(Sensor.site_id == site_id)
@@ -146,6 +168,8 @@ async def set_notifications_enabled_for_workshop(
     *,
     enabled: bool,
 ) -> int:
+    from sqlalchemy import update as sa_update
+
     result = await session.execute(
         sa_update(Sensor)
         .where(
@@ -165,8 +189,10 @@ async def delete(session: AsyncSession, sensor: Sensor) -> None:
 async def update_last_seen(
     session: AsyncSession,
     sensor_id: int,
-    last_seen: datetime,
+    last_seen,
 ) -> None:
+    from sqlalchemy import update as sa_update
+
     await session.execute(
         sa_update(Sensor)
         .where(Sensor.id == sensor_id)
@@ -177,8 +203,10 @@ async def update_last_seen(
 async def mark_stale_offline(
     session: AsyncSession,
     *,
-    older_than: datetime,
+    older_than,
 ) -> list[int]:
+    from sqlalchemy import update as sa_update
+
     result = await session.execute(
         sa_update(Sensor)
         .where(Sensor.status == SensorStatus.online)
@@ -195,6 +223,8 @@ async def set_status(
     sensor_id: int,
     status: SensorStatus,
 ) -> None:
+    from sqlalchemy import update as sa_update
+
     await session.execute(
         sa_update(Sensor).where(Sensor.id == sensor_id).values(status=status)
     )
