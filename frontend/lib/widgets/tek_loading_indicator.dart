@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/core/theme/app_theme.dart';
 import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
 
@@ -45,19 +47,47 @@ class _TekLoadingIndicatorState extends ConsumerState<TekLoadingIndicator>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final animate = tekAnimationsEnabled(context, ref);
+    final animate = tekAnimationsEnabled(context, ref) && !kIsWeb;
 
     if (!animate) {
-      return _body(theme, 0.5);
+      return RepaintBoundary(
+        child: _body(theme, kIsWeb ? null : 0.5),
+      );
     }
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) => _body(theme, _controller.value),
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) => _body(theme, _controller.value),
+      ),
     );
   }
 
-  Widget _body(ThemeData theme, double t) {
+  Widget _body(ThemeData theme, double? t) {
+    if (t == null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: widget.size,
+            height: widget.size,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          if (widget.message != null) ...[
+            SizedBox(height: widget.compact ? 8 : 16),
+            Text(
+              widget.message!,
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      );
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -138,14 +168,17 @@ class _WaveformPainter extends CustomPainter {
 
 /// Full-page centered loader.
 class TekPageLoading extends StatelessWidget {
-  const TekPageLoading({super.key, this.message = 'Загрузка…'});
+  const TekPageLoading({super.key, this.message});
 
-  final String message;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: TekLoadingIndicator(size: 56, message: message),
+      child: TekLoadingIndicator(
+        size: 56,
+        message: message ?? context.l10n.loading,
+      ),
     );
   }
 }

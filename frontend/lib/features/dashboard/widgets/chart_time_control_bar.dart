@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
 
 class ChartTimeControlBar extends StatelessWidget {
@@ -20,15 +21,16 @@ class ChartTimeControlBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     return Wrap(
       spacing: 4,
       runSpacing: 4,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text('Период:', style: theme.textTheme.labelSmall),
+        Text(l10n.periodLabel, style: theme.textTheme.labelSmall),
         for (final p in TimeRangePreset.values)
           ChoiceChip(
-            label: Text(p.label, style: theme.textTheme.labelSmall),
+            label: Text(p.label(l10n), style: theme.textTheme.labelSmall),
             labelPadding: const EdgeInsets.symmetric(horizontal: 4),
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -40,7 +42,7 @@ class ChartTimeControlBar extends StatelessWidget {
             onSelected: (_) => onPreset(p),
           ),
         ActionChip(
-          label: Text('Свой', style: theme.textTheme.labelSmall),
+          label: Text(l10n.customPeriod, style: theme.textTheme.labelSmall),
           avatar: const Icon(Icons.date_range, size: 14),
           visualDensity: VisualDensity.compact,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

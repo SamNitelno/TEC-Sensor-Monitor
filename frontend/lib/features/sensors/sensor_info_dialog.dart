@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:tek_sensor_monitor/core/color_utils.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
 import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
@@ -60,18 +61,19 @@ class _SensorInfoDialogState extends ConsumerState<_SensorInfoDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final fmt = DateFormat('dd.MM.yyyy HH:mm');
 
     return AlertDialog(
-      title: const Text('Информация о датчике'),
+      title: Text(l10n.sensorInfoTitle),
       content: SizedBox(
         width: 480,
         child: _loading
             ? const Center(child: TekLoadingIndicator())
             : _error != null
-                ? Text(friendlyApiError(_error!))
+                ? Text(friendlyApiError(_error!, l10n))
                 : _audit == null
-                    ? const Text('Нет данных')
+                    ? Text(l10n.noData)
                     : SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,28 +89,35 @@ class _SensorInfoDialogState extends ConsumerState<_SensorInfoDialog> {
                                         parseHexColor(_audit!.color),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text('Цвет: ${_audit!.color}'),
+                                  Text(l10n.colorValue(_audit!.color!)),
                                 ],
                               ),
                             ],
                             const SizedBox(height: 12),
                             Text(
-                              'Создан: ${fmt.format(_audit!.createdAt.toLocal())}'
-                              '${_audit!.createdByLogin != null ? ' · ${_audit!.createdByLogin}' : ''}',
+                              l10n.createdAt(
+                                fmt.format(_audit!.createdAt.toLocal()),
+                                _audit!.createdByLogin != null
+                                    ? ' · ${_audit!.createdByLogin}'
+                                    : '',
+                              ),
                             ),
                             Text(
-                              'Текущее размещение: '
-                              '${_audit!.currentWorkshopName ?? '—'}'
-                              '${_audit!.currentSiteName != null ? ' / ${_audit!.currentSiteName}' : ''}',
+                              l10n.currentPlacement(
+                                _audit!.currentWorkshopName ?? '—',
+                                _audit!.currentSiteName != null
+                                    ? ' / ${_audit!.currentSiteName}'
+                                    : '',
+                              ),
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'История размещения',
+                              l10n.placementHistoryTitle,
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                             const SizedBox(height: 8),
                             if (_audit!.placementHistory.isEmpty)
-                              const Text('История пуста')
+                              Text(l10n.placementHistoryEmpty)
                             else
                               for (final record in _audit!.placementHistory)
                                 Padding(
@@ -129,7 +138,7 @@ class _SensorInfoDialogState extends ConsumerState<_SensorInfoDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Закрыть'),
+          child: Text(l10n.close),
         ),
       ],
     );

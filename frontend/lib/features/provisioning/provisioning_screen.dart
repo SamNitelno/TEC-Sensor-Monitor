@@ -8,6 +8,7 @@ import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/provisioning/ble_constants.dart';
 import 'package:tek_sensor_monitor/features/provisioning/ble_platform.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/features/provisioning/ble_provisioning_service.dart';
 import 'package:tek_sensor_monitor/features/provisioning/provisioning_providers.dart';
 import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
@@ -106,6 +107,7 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
   }
 
   Future<void> _selectDevice(DiscoveredBleDevice item) async {
+    final l10n = context.l10n;
     setState(() {
       _error = null;
       _selectedDevice = item.device;
@@ -114,11 +116,12 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
       await _ble.connect(item.device);
       if (mounted) setState(() => _step = ProvisioningStep.configure);
     } catch (e) {
-      setState(() => _error = 'Не удалось подключиться: $e');
+      setState(() => _error = l10n.connectFailed(e.toString()));
     }
   }
 
   Future<void> _loadTokenForSensor(Sensor? sensor) async {
+    final l10n = context.l10n;
     if (sensor == null) {
       setState(() {
         _selectedSensor = null;
@@ -134,20 +137,21 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
         _serverUrlController.text = creds.ingestUrl;
       });
     } catch (e) {
-      setState(() => _error = 'Не удалось получить токен: $e');
+      setState(() => _error = l10n.tokenFetchFailed(e.toString()));
     }
   }
 
   Future<void> _commitProvisioning() async {
+    final l10n = context.l10n;
     final device = _selectedDevice;
     final token = _deviceToken;
     final sensor = _selectedSensor;
     if (device == null || token == null || sensor == null) {
-      setState(() => _error = 'Выберите ESP и зарегистрированный датчик');
+      setState(() => _error = l10n.selectDeviceAndSensor);
       return;
     }
     if (_ssidController.text.trim().isEmpty) {
-      setState(() => _error = 'Укажите SSID Wi-Fi');
+      setState(() => _error = l10n.ssidRequired);
       return;
     }
 
@@ -163,18 +167,22 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
         password: _passwordController.text,
         serverUrl: _serverUrlController.text.trim(),
         deviceToken: token,
+        l10n: l10n,
       );
       await device.disconnect();
       _startOnlinePolling(sensor.id);
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = e is BleProvisioningException
+            ? e.message
+            : e.toString();
         _step = ProvisioningStep.configure;
       });
     }
   }
 
   void _startOnlinePolling(int sensorId) {
+    final l10n = context.l10n;
     _pollAttempts = 0;
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
@@ -188,8 +196,7 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
         } else if (_pollAttempts >= 45 && mounted) {
           timer.cancel();
           setState(() {
-            _error =
-                'Датчик не перешёл в online за 90 с. Проверьте Wi-Fi и URL сервера.';
+            _error = l10n.onlineTimeout;
             _step = ProvisioningStep.configure;
           });
         }
@@ -203,14 +210,15 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (!isBleProvisioningSupported) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Привязка ESP по BLE')),
+        appBar: AppBar(title: Text(l10n.provisioningTitle)),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              bleUnavailableWebMessage,
+              l10n.provisioningUnavailableWeb,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium,
             ),
@@ -221,13 +229,13 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Привязка ESP по BLE'),
+        title: Text(l10n.provisioningTitle),
         actions: [
           if (_step == ProvisioningStep.scan)
             IconButton(
               onPressed: _scanning ? null : _startScan,
               icon: const Icon(Icons.refresh),
-              tooltip: 'Сканировать снова',
+              tooltip: l10n.rescanTooltip,
             ),
         ],
       ),
@@ -241,6 +249,7 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
   }
 
   Widget _buildScanStep() {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -249,8 +258,7 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
         Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            'Найдите ESP в режиме привязки (имя начинается с TEC-ESP). '
-            'Убедитесь, что Bluetooth включён.',
+            l10n.scanInstructions,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ),
@@ -262,7 +270,7 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
         Expanded(
           child: _devices.isEmpty
               ? Center(
-                  child: Text(_scanning ? 'Сканирование…' : 'Устройства не найдены'),
+                  child: Text(_scanning ? l10n.scanning : l10n.noDevicesFound),
                 )
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
@@ -287,55 +295,60 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
   }
 
   Widget _buildConfigureStep() {
+    final l10n = context.l10n;
     final sensorsAsync = ref.watch(sensorsProvider);
+    final deviceName = _selectedDevice?.platformName.isNotEmpty == true
+        ? _selectedDevice!.platformName
+        : _selectedDevice?.remoteId.str ?? '';
 
     return sensorsAsync.when(
       loading: () => const TekPageLoading(),
-      error: (e, _) => Center(child: Text('Ошибка загрузки датчиков: $e')),
+      error: (e, _) =>
+          Center(child: Text(l10n.provisioningSensorsLoadError(e.toString()))),
       data: (sensors) => SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Подключено: ${_selectedDevice?.platformName.isNotEmpty == true ? _selectedDevice!.platformName : _selectedDevice?.remoteId.str}',
+              l10n.connectedTo(deviceName),
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _ssidController,
-              decoration: const InputDecoration(
-                labelText: 'SSID Wi-Fi',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.wifiSsidLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _passwordController,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Пароль Wi-Fi',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.wifiPasswordLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _serverUrlController,
-              decoration: const InputDecoration(
-                labelText: 'URL приёма (ingest)',
-                border: OutlineInputBorder(),
-                helperText: 'POST /api/v1/ingest — LAN-IP, не localhost',
+              decoration: InputDecoration(
+                labelText: l10n.ingestUrlLabel,
+                border: const OutlineInputBorder(),
+                helperText: l10n.ingestUrlHelper,
               ),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<Sensor?>(
               value: _selectedSensor,
-              decoration: const InputDecoration(
-                labelText: 'Датчик в системе',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.systemSensorLabel,
+                border: const OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem(value: null, child: Text('— выберите —')),
+                DropdownMenuItem(value: null, child: Text(l10n.selectPlaceholder)),
                 ...sensors.map(
                   (s) => DropdownMenuItem(
                     value: s,
@@ -349,7 +362,7 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  'Токен загружен с сервера (${_deviceToken!.length} симв.)',
+                  l10n.tokenLoaded(_deviceToken!.length),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
@@ -361,11 +374,11 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
             FilledButton.icon(
               onPressed: _commitProvisioning,
               icon: const Icon(Icons.link),
-              label: const Text('Записать и привязать'),
+              label: Text(l10n.commitButton),
             ),
             TextButton(
               onPressed: () => setState(() => _step = ProvisioningStep.scan),
-              child: const Text('Выбрать другое устройство'),
+              child: Text(l10n.selectOtherDevice),
             ),
           ],
         ),
@@ -374,14 +387,15 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
   }
 
   Widget _buildWaitingStep() {
+    final l10n = context.l10n;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const TekLoadingIndicator(size: 48, message: 'Ожидание первой телеметрии…'),
+          TekLoadingIndicator(size: 48, message: l10n.waitingTelemetry),
           const SizedBox(height: 8),
           Text(
-            'ESP подключается к Wi-Fi и отправляет данные',
+            l10n.waitingDescription,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
@@ -390,6 +404,7 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
   }
 
   Widget _buildSuccessStep() {
+    final l10n = context.l10n;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -399,14 +414,14 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
             Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary, size: 72),
             const SizedBox(height: 16),
             Text(
-              'Датчик ${_selectedSensor?.name ?? ''} online',
+              l10n.successOnline(_selectedSensor?.name ?? ''),
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Готово'),
+              child: Text(l10n.done),
             ),
           ],
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/notifications/notifications_providers.dart';
 import 'package:tek_sensor_monitor/models/notification.dart';
@@ -25,6 +26,7 @@ class NotificationsPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     final notificationsAsync = ref.watch(notificationsListProvider);
 
     return DraggableScrollableSheet(
@@ -40,7 +42,8 @@ class NotificationsPanel extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
               child: Row(
                 children: [
-                  Text('Уведомления', style: theme.textTheme.titleMedium),
+                  Text(l10n.notificationsTitle,
+                      style: theme.textTheme.titleMedium),
                   const Spacer(),
                   TextButton(
                     onPressed: () async {
@@ -50,7 +53,7 @@ class NotificationsPanel extends ConsumerWidget {
                       ref.invalidate(unreadNotificationsCountProvider);
                       ref.invalidate(notificationsListProvider);
                     },
-                    child: const Text('Прочитать все'),
+                    child: Text(l10n.markAllRead),
                   ),
                 ],
               ),
@@ -59,11 +62,12 @@ class NotificationsPanel extends ConsumerWidget {
             Expanded(
               child: notificationsAsync.when(
                 loading: () =>
-                    const TekPageLoading(message: 'Загрузка уведомлений…'),
-                error: (e, _) => Center(child: Text(friendlyApiError(e))),
+                    TekPageLoading(message: l10n.loadingNotifications),
+                error: (e, _) =>
+                    Center(child: Text(friendlyApiError(e, l10n))),
                 data: (items) {
                   if (items.isEmpty) {
-                    return const Center(child: Text('Нет новых уведомлений'));
+                    return Center(child: Text(l10n.noNewNotifications));
                   }
                   return ListView.separated(
                     controller: scrollController,
@@ -124,11 +128,12 @@ class NotificationBellButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final countAsync = ref.watch(unreadNotificationsCountProvider);
     final count = countAsync.valueOrNull ?? 0;
 
     return IconButton(
-      tooltip: 'Уведомления',
+      tooltip: l10n.notificationsTitle,
       onPressed: () => showNotificationsPanel(context, ref),
       icon: Badge(
         isLabelVisible: count > 0,

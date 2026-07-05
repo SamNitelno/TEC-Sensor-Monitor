@@ -10,8 +10,17 @@ class LocalNotifications {
 
   static bool _initialized = false;
   static bool? _permissionGranted;
+  static String _channelName = 'Role changes';
+  static String _channelDescription = 'User promotions and demotions';
 
-  static Future<void> init() async {
+  static Future<void> init({
+    String? channelName,
+    String? channelDescription,
+  }) async {
+    if (channelName != null) _channelName = channelName;
+    if (channelDescription != null) {
+      _channelDescription = channelDescription;
+    }
     if (_initialized) return;
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -85,6 +94,14 @@ class LocalNotifications {
     await openAppSettings();
   }
 
+  static void updateChannelStrings({
+    required String channelName,
+    required String channelDescription,
+  }) {
+    _channelName = channelName;
+    _channelDescription = channelDescription;
+  }
+
   static Future<void> show({
     required int id,
     required String title,
@@ -92,15 +109,15 @@ class LocalNotifications {
   }) async {
     if (!_initialized) await init();
 
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
         'role_changes',
-        'Изменения прав',
-        channelDescription: 'Повышение и понижение пользователей',
+        _channelName,
+        channelDescription: _channelDescription,
         importance: Importance.high,
         priority: Priority.high,
       ),
-      iOS: DarwinNotificationDetails(),
+      iOS: const DarwinNotificationDetails(),
     );
 
     await _plugin.show(id, title, body, details);

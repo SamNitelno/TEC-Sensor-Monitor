@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/core/color_utils.dart';
+import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
 import 'package:tek_sensor_monitor/widgets/color_picker_field.dart';
+import 'package:tek_sensor_monitor/widgets/tek_sort_dropdown.dart';
 
 final allSitesProvider = FutureProvider<List<Site>>((ref) async {
   final client = ref.watch(apiClientProvider);
@@ -22,6 +25,7 @@ class GroupsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final workshopsAsync = ref.watch(workshopsProvider);
     final allSitesAsync = ref.watch(allSitesProvider);
 
@@ -29,10 +33,10 @@ class GroupsScreen extends ConsumerWidget {
       length: 2,
       child: Column(
         children: [
-          const TabBar(
+          TabBar(
             tabs: [
-              Tab(text: 'Цеха'),
-              Tab(text: 'Площадки'),
+              Tab(text: l10n.tabWorkshops),
+              Tab(text: l10n.tabSites),
             ],
           ),
           Expanded(
@@ -42,14 +46,14 @@ class GroupsScreen extends ConsumerWidget {
                   loading: () =>
                       const TekPageLoading(),
                   error: (e, _) =>
-                      Center(child: Text(friendlyApiError(e))),
+                      Center(child: Text(friendlyApiError(e, l10n))),
                   data: (workshops) => _WorkshopsTab(workshops: workshops),
                 ),
                 allSitesAsync.when(
                   loading: () =>
                       const TekPageLoading(),
                   error: (e, _) =>
-                      Center(child: Text(friendlyApiError(e))),
+                      Center(child: Text(friendlyApiError(e, l10n))),
                   data: (sites) => _SitesTab(sites: sites),
                 ),
               ],
@@ -105,6 +109,7 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
   }
 
   Future<void> _setAllNotifications(bool enabled) async {
+    final l10n = context.l10n;
     try {
       await ref
           .read(apiClientProvider)
@@ -117,8 +122,8 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
           SnackBar(
             content: Text(
               enabled
-                  ? 'Уведомления включены для всех цехов'
-                  : 'Уведомления отключены для всех цехов',
+                  ? l10n.notificationsEnabledAllWorkshops
+                  : l10n.notificationsDisabledAllWorkshops,
             ),
           ),
         );
@@ -126,7 +131,7 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyApiError(e))),
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
         );
       }
     }
@@ -134,13 +139,14 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final filtered = _sort(_filter(widget.workshops));
     final allEnabled = widget.workshops.isNotEmpty &&
         widget.workshops.every((w) => w.notificationsEnabled);
 
     return Scaffold(
       body: widget.workshops.isEmpty
-          ? const Center(child: Text('Нет цехов'))
+          ? Center(child: Text(l10n.noWorkshops))
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -148,13 +154,13 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: SearchBar(
                     controller: _searchController,
-                    hintText: 'Поиск по названию…',
+                    hintText: l10n.searchWorkshopsHint,
                     leading: const Icon(Icons.search),
                     trailing: _query.isEmpty
                         ? null
                         : [
                             IconButton(
-                              tooltip: 'Очистить',
+                              tooltip: l10n.clear,
                               icon: const Icon(Icons.clear),
                               onPressed: () {
                                 _searchController.clear();
@@ -169,16 +175,16 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Row(
                     children: [
-                      DropdownButton<_WorkshopsSortField>(
+                      TekSortDropdown<_WorkshopsSortField>(
                         value: _sortField,
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: _WorkshopsSortField.name,
-                            child: Text('По алфавиту'),
+                            child: Text(l10n.sortAlphabetical),
                           ),
                           DropdownMenuItem(
                             value: _WorkshopsSortField.createdAt,
-                            child: Text('По дате создания'),
+                            child: Text(l10n.sortByCreatedAt),
                           ),
                         ],
                         onChanged: (value) {
@@ -188,8 +194,9 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
                         },
                       ),
                       IconButton(
-                        tooltip:
-                            _sortAscending ? 'По возрастанию' : 'По убыванию',
+                        tooltip: _sortAscending
+                            ? l10n.sortAscending
+                            : l10n.sortDescending,
                         icon: Icon(
                           _sortAscending
                               ? Icons.arrow_upward
@@ -201,8 +208,8 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
                       const Spacer(),
                       IconButton(
                         tooltip: allEnabled
-                            ? 'Отключить уведомления у всех'
-                            : 'Включить уведомления у всех',
+                            ? l10n.disableNotificationsAll
+                            : l10n.enableNotificationsAll,
                         icon: Icon(
                           allEnabled
                               ? Icons.notifications_active
@@ -219,6 +226,7 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final workshop = filtered[index];
+                      final itemL10n = context.l10n;
                       return Card(
                         child: ListTile(
                           leading: CircleAvatar(
@@ -232,8 +240,8 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
                             children: [
                               IconButton(
                                 tooltip: workshop.notificationsEnabled
-                                    ? 'Отключить уведомления цеха'
-                                    : 'Включить уведомления цеха',
+                                    ? itemL10n.disableWorkshopNotifications
+                                    : itemL10n.enableWorkshopNotifications,
                                 icon: Icon(
                                   workshop.notificationsEnabled
                                       ? Icons.notifications_active_outlined
@@ -252,7 +260,7 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
                                 },
                               ),
                               IconButton(
-                                tooltip: 'Изменить',
+                                tooltip: itemL10n.edit,
                                 icon: const Icon(Icons.edit_outlined),
                                 onPressed: () => _editWorkshop(
                                   context,
@@ -283,7 +291,7 @@ class _WorkshopsTabState extends ConsumerState<_WorkshopsTab> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addWorkshop(context, ref),
         icon: const Icon(Icons.add),
-        label: const Text('Цех'),
+        label: Text(l10n.fabWorkshop),
       ),
     );
   }
@@ -310,23 +318,35 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
     super.dispose();
   }
 
-  String _workshopName(int workshopId, Map<int, String> nameById) {
-    return nameById[workshopId] ?? 'цех #$workshopId';
+  String _workshopName(
+    int workshopId,
+    Map<int, String> nameById,
+    AppLocalizations l10n,
+  ) {
+    return nameById[workshopId] ?? l10n.workshopFallback(workshopId);
   }
 
-  List<Site> _filter(List<Site> sites, Map<int, String> nameById) {
+  List<Site> _filter(
+    List<Site> sites,
+    Map<int, String> nameById,
+    AppLocalizations l10n,
+  ) {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return sites;
     return sites.where((site) {
       final haystack = [
         site.name,
-        _workshopName(site.workshopId, nameById),
+        _workshopName(site.workshopId, nameById, l10n),
       ].join(' ').toLowerCase();
       return haystack.contains(q);
     }).toList();
   }
 
-  List<Site> _sort(List<Site> sites, Map<int, String> nameById) {
+  List<Site> _sort(
+    List<Site> sites,
+    Map<int, String> nameById,
+    AppLocalizations l10n,
+  ) {
     final sorted = [...sites];
     sorted.sort((a, b) {
       final int cmp;
@@ -337,9 +357,9 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
           cmp = (a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0))
               .compareTo(b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0));
         case _SitesSortField.workshop:
-          cmp = _workshopName(a.workshopId, nameById)
+          cmp = _workshopName(a.workshopId, nameById, l10n)
               .toLowerCase()
-              .compareTo(_workshopName(b.workshopId, nameById).toLowerCase());
+              .compareTo(_workshopName(b.workshopId, nameById, l10n).toLowerCase());
           if (cmp != 0) break;
           return _sortAscending
               ? a.name.toLowerCase().compareTo(b.name.toLowerCase())
@@ -351,6 +371,7 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
   }
 
   Future<void> _setAllNotifications(bool enabled) async {
+    final l10n = context.l10n;
     try {
       await ref.read(apiClientProvider).setAllSiteNotifications(enabled: enabled);
       ref.invalidate(allSitesProvider);
@@ -361,8 +382,8 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
           SnackBar(
             content: Text(
               enabled
-                  ? 'Уведомления включены для всех площадок'
-                  : 'Уведомления отключены для всех площадок',
+                  ? l10n.notificationsEnabledAllSites
+                  : l10n.notificationsDisabledAllSites,
             ),
           ),
         );
@@ -370,7 +391,7 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyApiError(e))),
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
         );
       }
     }
@@ -378,16 +399,17 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final workshopsAsync = ref.watch(workshopsProvider);
     final workshops = workshopsAsync.valueOrNull ?? [];
     final nameById = {for (final w in workshops) w.id: w.name};
-    final filtered = _sort(_filter(widget.sites, nameById), nameById);
+    final filtered = _sort(_filter(widget.sites, nameById, l10n), nameById, l10n);
     final allEnabled = widget.sites.isNotEmpty &&
         widget.sites.every((s) => s.notificationsEnabled);
 
     return Scaffold(
       body: widget.sites.isEmpty
-          ? const Center(child: Text('Нет площадок'))
+          ? Center(child: Text(l10n.noSites))
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -395,13 +417,13 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: SearchBar(
                     controller: _searchController,
-                    hintText: 'Поиск по названию, цеху…',
+                    hintText: l10n.searchSitesHint,
                     leading: const Icon(Icons.search),
                     trailing: _query.isEmpty
                         ? null
                         : [
                             IconButton(
-                              tooltip: 'Очистить',
+                              tooltip: l10n.clear,
                               icon: const Icon(Icons.clear),
                               onPressed: () {
                                 _searchController.clear();
@@ -416,20 +438,20 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Row(
                     children: [
-                      DropdownButton<_SitesSortField>(
+                      TekSortDropdown<_SitesSortField>(
                         value: _sortField,
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: _SitesSortField.name,
-                            child: Text('По алфавиту'),
+                            child: Text(l10n.sortAlphabetical),
                           ),
                           DropdownMenuItem(
                             value: _SitesSortField.createdAt,
-                            child: Text('По дате создания'),
+                            child: Text(l10n.sortByCreatedAt),
                           ),
                           DropdownMenuItem(
                             value: _SitesSortField.workshop,
-                            child: Text('По цеху'),
+                            child: Text(l10n.sortByWorkshop),
                           ),
                         ],
                         onChanged: (value) {
@@ -439,8 +461,9 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
                         },
                       ),
                       IconButton(
-                        tooltip:
-                            _sortAscending ? 'По возрастанию' : 'По убыванию',
+                        tooltip: _sortAscending
+                            ? l10n.sortAscending
+                            : l10n.sortDescending,
                         icon: Icon(
                           _sortAscending
                               ? Icons.arrow_upward
@@ -452,8 +475,8 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
                       const Spacer(),
                       IconButton(
                         tooltip: allEnabled
-                            ? 'Отключить уведомления у всех'
-                            : 'Включить уведомления у всех',
+                            ? l10n.disableNotificationsAll
+                            : l10n.enableNotificationsAll,
                         icon: Icon(
                           allEnabled
                               ? Icons.notifications_active
@@ -470,8 +493,12 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final site = filtered[index];
-                      final workshopName =
-                          nameById[site.workshopId] ?? 'цех #${site.workshopId}';
+                      final itemL10n = context.l10n;
+                      final workshopName = _workshopName(
+                        site.workshopId,
+                        nameById,
+                        itemL10n,
+                      );
                       return Card(
                         child: ListTile(
                           leading: CircleAvatar(
@@ -479,14 +506,14 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
                             backgroundColor: resolveSiteChipColor(site, index),
                           ),
                           title: Text(site.name),
-                          subtitle: Text('Цех: $workshopName'),
+                          subtitle: Text(itemL10n.siteWorkshopSubtitle(workshopName)),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
                                 tooltip: site.notificationsEnabled
-                                    ? 'Отключить уведомления площадки'
-                                    : 'Включить уведомления площадки',
+                                    ? itemL10n.disableSiteNotifications
+                                    : itemL10n.enableSiteNotifications,
                                 icon: Icon(
                                   site.notificationsEnabled
                                       ? Icons.notifications_active_outlined
@@ -504,7 +531,7 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
                                 },
                               ),
                               IconButton(
-                                tooltip: 'Изменить',
+                                tooltip: itemL10n.edit,
                                 icon: const Icon(Icons.edit_outlined),
                                 onPressed: () =>
                                     _editSite(context, ref, site),
@@ -534,7 +561,7 @@ class _SitesTabState extends ConsumerState<_SitesTab> {
             ? null
             : () => _addSite(context, ref, workshops),
         icon: const Icon(Icons.add),
-        label: const Text('Площадка'),
+        label: Text(l10n.fabSite),
       ),
     );
   }
@@ -546,19 +573,21 @@ Future<void> _addWorkshop(BuildContext context, WidgetRef ref) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: const Text('Новый цех'),
+      builder: (context, setState) {
+        final l10n = context.l10n;
+        return AlertDialog(
+        title: Text(l10n.newWorkshopTitle),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: controller,
-                decoration: const InputDecoration(labelText: 'Название'),
+                decoration: InputDecoration(labelText: l10n.name),
               ),
               const SizedBox(height: 12),
               ColorPickerField(
-                label: 'Цвет на дашборде',
+                label: l10n.dashboardColorLabel,
                 value: color,
                 onChanged: (value) => setState(() => color = value),
               ),
@@ -568,14 +597,15 @@ Future<void> _addWorkshop(BuildContext context, WidgetRef ref) async {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Создать'),
+            child: Text(l10n.create),
           ),
         ],
-      ),
+      );
+      },
     ),
   );
   if (ok == true) {
@@ -597,19 +627,21 @@ Future<void> _editWorkshop(
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: const Text('Изменить цех'),
+      builder: (context, setState) {
+        final l10n = context.l10n;
+        return AlertDialog(
+        title: Text(l10n.editWorkshopTitle),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: controller,
-                decoration: const InputDecoration(labelText: 'Название'),
+                decoration: InputDecoration(labelText: l10n.name),
               ),
               const SizedBox(height: 12),
               ColorPickerField(
-                label: 'Цвет на дашборде',
+                label: l10n.dashboardColorLabel,
                 value: color,
                 onChanged: (value) => setState(() => color = value),
               ),
@@ -619,14 +651,15 @@ Future<void> _editWorkshop(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Сохранить'),
+            child: Text(l10n.save),
           ),
         ],
-      ),
+      );
+      },
     ),
   );
   if (ok == true) {
@@ -652,19 +685,21 @@ Future<void> _addSite(
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Новая площадка'),
+        builder: (context, setState) {
+          final l10n = context.l10n;
+          return AlertDialog(
+          title: Text(l10n.newSiteTitle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Название'),
+                  decoration: InputDecoration(labelText: l10n.name),
                 ),
                 DropdownButtonFormField<int>(
                   value: workshopId,
-                  decoration: const InputDecoration(labelText: 'Цех'),
+                  decoration: InputDecoration(labelText: l10n.workshopLabel),
                   items: workshops
                       .map(
                         (w) => DropdownMenuItem(
@@ -679,7 +714,7 @@ Future<void> _addSite(
                 ),
                 const SizedBox(height: 12),
                 ColorPickerField(
-                  label: 'Цвет на дашборде',
+                  label: l10n.dashboardColorLabel,
                   value: color,
                   onChanged: (value) => setState(() => color = value),
                 ),
@@ -689,14 +724,15 @@ Future<void> _addSite(
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Создать'),
+              child: Text(l10n.create),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
   if (ok == true) {
@@ -720,20 +756,22 @@ Future<void> _editSite(BuildContext context, WidgetRef ref, Site site) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: const Text('Изменить площадку'),
+      builder: (context, setState) {
+        final l10n = context.l10n;
+        return AlertDialog(
+        title: Text(l10n.editSiteTitle),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Название'),
+                decoration: InputDecoration(labelText: l10n.name),
               ),
               if (workshops.isNotEmpty)
                 DropdownButtonFormField<int>(
                   value: workshopId,
-                  decoration: const InputDecoration(labelText: 'Цех'),
+                  decoration: InputDecoration(labelText: l10n.workshopLabel),
                   items: workshops
                       .map(
                         (w) => DropdownMenuItem(
@@ -748,7 +786,7 @@ Future<void> _editSite(BuildContext context, WidgetRef ref, Site site) async {
                 ),
               const SizedBox(height: 12),
               ColorPickerField(
-                label: 'Цвет на дашборде',
+                label: l10n.dashboardColorLabel,
                 value: color,
                 onChanged: (value) => setState(() => color = value),
               ),
@@ -758,14 +796,15 @@ Future<void> _editSite(BuildContext context, WidgetRef ref, Site site) async {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Сохранить'),
+            child: Text(l10n.save),
           ),
         ],
-      ),
+      );
+      },
     ),
   );
   if (ok == true) {

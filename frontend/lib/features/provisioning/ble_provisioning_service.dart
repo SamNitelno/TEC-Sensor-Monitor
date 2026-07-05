@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:tek_sensor_monitor/features/provisioning/ble_constants.dart';
+import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 
 class BleProvisioningException implements Exception {
   BleProvisioningException(this.message);
@@ -71,17 +72,23 @@ class BleProvisioningService {
     required String password,
     required String serverUrl,
     required String deviceToken,
+    AppLocalizations? l10n,
   }) async {
     final services = await device.discoverServices();
     final service = services.firstWhere(
       (s) => s.uuid == Guid(BleConstants.provisioningServiceUuid),
-      orElse: () => throw BleProvisioningException('Сервис привязки не найден'),
+      orElse: () => throw BleProvisioningException(
+        l10n?.bleServiceNotFound ?? 'Pairing service not found',
+      ),
     );
 
     Future<void> write(String uuid, String value) async {
       final characteristic = service.characteristics.firstWhere(
         (c) => c.uuid == Guid(uuid),
-        orElse: () => throw BleProvisioningException('Характеристика $uuid не найдена'),
+        orElse: () => throw BleProvisioningException(
+          l10n?.bleCharacteristicNotFound(uuid) ??
+              'Characteristic $uuid not found',
+        ),
       );
       await characteristic.write(utf8.encode(value), withoutResponse: false);
     }

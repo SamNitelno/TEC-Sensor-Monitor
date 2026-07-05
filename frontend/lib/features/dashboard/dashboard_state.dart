@@ -1,31 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 
 enum TimeRangePreset {
-  minute('Мин', Duration(minutes: 1)),
-  hour('Час', Duration(hours: 1)),
-  day('День', Duration(days: 1)),
-  week('Неделя', Duration(days: 7)),
-  month('Месяц', Duration(days: 30)),
-  year('Год', Duration(days: 365));
+  minute(Duration(minutes: 1)),
+  hour(Duration(hours: 1)),
+  day(Duration(days: 1)),
+  week(Duration(days: 7)),
+  month(Duration(days: 30)),
+  year(Duration(days: 365));
 
-  const TimeRangePreset(this.label, this.duration);
+  const TimeRangePreset(this.duration);
 
-  final String label;
   final Duration duration;
 }
 
 enum ChartScale {
-  seconds('Сек', 'raw'),
-  minutes('Мин', 'minute'),
-  hours('Ч', 'hour'),
-  days('Дн', 'hour'),
-  weeks('Нед', 'day'),
-  months('Мес', 'day'),
-  years('Год', 'day');
+  seconds('raw'),
+  minutes('minute'),
+  hours('hour'),
+  days('hour'),
+  weeks('day'),
+  months('day'),
+  years('day');
 
-  const ChartScale(this.label, this.bucket);
+  const ChartScale(this.bucket);
 
-  final String label;
   final String bucket;
 }
 
@@ -69,8 +68,8 @@ class ChartPanelConfig {
   final bool allSensors;
   final Set<int> selectedSensorIds;
 
-  String displayTitle(int index) =>
-      title.isNotEmpty ? title : 'График ${index + 1}';
+  String displayTitle(int index, AppLocalizations l10n) =>
+      title.isNotEmpty ? title : l10n.defaultChartTitle(index + 1);
 
   ChartPanelConfig copyWith({
     String? title,

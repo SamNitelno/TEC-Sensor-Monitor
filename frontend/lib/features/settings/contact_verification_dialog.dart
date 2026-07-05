@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tek_sensor_monitor/core/api_client.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/models/contact_verification.dart';
 import 'package:tek_sensor_monitor/models/notification.dart';
 
@@ -76,9 +77,10 @@ class _ContactVerificationDialogState extends State<ContactVerificationDialog> {
   }
 
   Future<void> _submit() async {
+    final l10n = context.l10n;
     final code = _codeController.text.trim();
     if (code.length < 4) {
-      setState(() => _error = 'Введите код из письма или SMS');
+      setState(() => _error = l10n.codeTooShort);
       return;
     }
 
@@ -130,7 +132,7 @@ class _ContactVerificationDialogState extends State<ContactVerificationDialog> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = friendlyApiError(e);
+          _error = friendlyApiError(e, l10n);
           _submitting = false;
         });
       }
@@ -139,11 +141,11 @@ class _ContactVerificationDialogState extends State<ContactVerificationDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final isEmail = _step == 'email';
-    final title = isEmail ? 'Подтверждение email' : 'Подтверждение телефона';
-    final hint = isEmail
-        ? 'Введите код из письма'
-        : 'Введите код из SMS';
+    final title =
+        isEmail ? l10n.emailVerificationTitle : l10n.phoneVerificationTitle;
+    final hint = isEmail ? l10n.emailCodeHint : l10n.smsCodeHint;
 
     return AlertDialog(
       title: Text(title),
@@ -153,7 +155,7 @@ class _ContactVerificationDialogState extends State<ContactVerificationDialog> {
         children: [
           if (_destinationMasked != null)
             Text(
-              'Код отправлен на $_destinationMasked',
+              l10n.codeSentTo(_destinationMasked!),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           const SizedBox(height: 12),
@@ -176,7 +178,7 @@ class _ContactVerificationDialogState extends State<ContactVerificationDialog> {
       actions: [
         TextButton(
           onPressed: _submitting ? null : () => Navigator.pop(context),
-          child: const Text('Отмена'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: _submitting ? null : _submit,
@@ -186,7 +188,7 @@ class _ContactVerificationDialogState extends State<ContactVerificationDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Подтвердить'),
+              : Text(l10n.confirm),
         ),
       ],
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tek_sensor_monitor/core/color_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 
 class ColorPickerField extends StatefulWidget {
   const ColorPickerField({
@@ -43,6 +44,7 @@ class _ColorPickerFieldState extends State<ColorPickerField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     final borderColor = theme.dividerColor;
     final parsed = parseHexColor(_controller.text);
     return Column(
@@ -80,7 +82,7 @@ class _ColorPickerFieldState extends State<ColorPickerField> {
         TextField(
           controller: _controller,
           decoration: InputDecoration(
-            labelText: 'HEX (#RRGGBB)',
+            labelText: l10n.hexColorFormat,
             prefixIcon: parsed != null
                 ? Padding(
                     padding: const EdgeInsets.all(12),
@@ -97,13 +99,14 @@ class _ColorPickerFieldState extends State<ColorPickerField> {
                 : null,
             errorText: validateHexColor(
               _controller.text.isEmpty ? null : _controller.text,
+              l10n,
             ),
           ),
           onChanged: (value) {
             final trimmed = value.trim();
             if (trimmed.isEmpty) {
               widget.onChanged(null);
-            } else if (validateHexColor(trimmed) == null) {
+            } else if (validateHexColor(trimmed, l10n) == null) {
               widget.onChanged(trimmed.toUpperCase());
             }
             setState(() {});

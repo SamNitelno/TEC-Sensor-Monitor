@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/core/theme/app_theme.dart';
 import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
@@ -45,7 +46,7 @@ class CurrentChart extends ConsumerStatefulWidget {
     required this.rangeEnd,
     this.downtimeBands = const [],
     this.onVisibleRangeChanged,
-    this.onScaleWheel,
+    this.onWheelZoom,
     this.isLiveWindow = false,
   });
 
@@ -55,7 +56,7 @@ class CurrentChart extends ConsumerStatefulWidget {
   final DateTime rangeEnd;
   final List<ChartDowntimeBand> downtimeBands;
   final void Function(DateTime start, DateTime end)? onVisibleRangeChanged;
-  final ValueChanged<ChartScale>? onScaleWheel;
+  final ValueChanged<double>? onWheelZoom;
   final bool isLiveWindow;
 
   static Color colorForIndex(int index) =>
@@ -70,6 +71,7 @@ class _CurrentChartState extends ConsumerState<CurrentChart> {
   DateTime? _pendingVisibleMin;
   DateTime? _pendingVisibleMax;
   bool _rangeUpdateFromZoom = false;
+  bool _ignoreZoomEnd = false;
 
   @override
   void initState() {
@@ -92,6 +94,10 @@ class _CurrentChartState extends ConsumerState<CurrentChart> {
   }
 
   void _onZoomEnd(ZoomPanArgs args) {
+    if (_ignoreZoomEnd) {
+      _ignoreZoomEnd = false;
+      return;
+    }
     final min = _pendingVisibleMin;
     final max = _pendingVisibleMax;
     if (min == null || max == null || !min.isBefore(max)) {
@@ -106,6 +112,7 @@ class _CurrentChartState extends ConsumerState<CurrentChart> {
     super.didUpdateWidget(oldWidget);
     final scaleChanged = oldWidget.scale != widget.scale;
     if (scaleChanged) {
+      _ignoreZoomEnd = true;
       _zoomPanBehavior.reset();
       _pendingVisibleMin = null;
       _pendingVisibleMax = null;
@@ -133,22 +140,23 @@ class _CurrentChartState extends ConsumerState<CurrentChart> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tek = tekTheme(context);
+    final l10n = context.l10n;
+    final localeCode = Localizations.localeOf(context).languageCode;
     final axisMin = _axisMinimum();
     final axisMax = _axisMaximum();
-    final animMs =
-        tekAnimationsEnabled(context, ref) ? 700.0 : 0.0;
+    final animMs = TekMotion.chartAnimMs(
+      animate: tekAnimationsEnabled(context, ref),
+    );
 
     return Listener(
       behavior: HitTestBehavior.opaque,
       onPointerSignal: (event) {
-        if (event is PointerScrollEvent && widget.onScaleWheel != null) {
-          final next = widget.scale.adjustByWheelDelta(event.scrollDelta.dy);
-          if (next != widget.scale) {
-            widget.onScaleWheel!(next);
-          }
+        if (event is PointerScrollEvent && widget.onWheelZoom != null) {
+          widget.onWheelZoom!(event.scrollDelta.dy);
         }
       },
-      child: SfCartesianChart(
+      child: RepaintBoundary(
+        child: SfCartesianChart(
         onActualRangeChanged: _onActualRangeChanged,
         onZoomEnd: _onZoomEnd,
         plotAreaBorderWidth: 0,
@@ -181,12 +189,12 @@ class _CurrentChartState extends ConsumerState<CurrentChart> {
             color: theme.textTheme.bodyMedium?.color,
             fontSize: 11,
           ),
-          dateFormat: _dateFormat(widget.scale),
+          dateFormat: _dateFormat(widget.scale, localeCode),
           intervalType: _intervalType(widget.scale),
         ),
         primaryYAxis: NumericAxis(
           title: AxisTitle(
-            text: 'Ток, А',
+            text: l10n.currentAxisTitle,
             textStyle: TextStyle(
               color: theme.textTheme.bodyMedium?.color,
               fontSize: 11,
@@ -237,6 +245,7 @@ class _CurrentChartState extends ConsumerState<CurrentChart> {
             ],
         ],
       ),
+      ),
     );
   }
 
@@ -272,14 +281,14 @@ class _CurrentChartState extends ConsumerState<CurrentChart> {
     return dataMax.isAfter(rangeMax) ? dataMax : rangeMax;
   }
 
-  DateFormat _dateFormat(ChartScale scale) {
+  DateFormat _dateFormat(ChartScale scale, String localeCode) {
     return switch (scale) {
       ChartScale.seconds => DateFormat('HH:mm:ss'),
       ChartScale.minutes => DateFormat('HH:mm'),
       ChartScale.hours => DateFormat('dd.MM HH:mm'),
       ChartScale.days => DateFormat('dd.MM'),
       ChartScale.weeks => DateFormat('dd.MM'),
-      ChartScale.months => DateFormat('MMM yyyy', 'ru'),
+      ChartScale.months => DateFormat('MMM yyyy', localeCode),
       ChartScale.years => DateFormat('yyyy'),
     };
   }

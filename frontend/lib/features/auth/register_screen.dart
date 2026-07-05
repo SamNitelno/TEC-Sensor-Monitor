@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/core/password_validation.dart';
 import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
@@ -63,28 +64,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = context.l10n;
     final login = _loginController.text.trim();
     final password = _passwordController.text;
     final confirm = _confirmController.text;
 
-    final passwordError = validatePassword(password);
+    final passwordError = validatePassword(password, l10n);
     if (passwordError != null) {
       _showError(passwordError);
       return;
     }
     if (password != confirm) {
-      _showError('Пароли не совпадают');
+      _showError(l10n.passwordsDoNotMatch);
       return;
     }
     if (_loginAvailable == false) {
-      _showError('Логин уже занят');
+      _showError(l10n.loginAlreadyTaken);
       return;
     }
 
     await ref.read(authProvider.notifier).register(login, password);
     final error = ref.read(authProvider).error;
     if (error != null && mounted) {
-      _showError(friendlyApiError(error));
+      _showError(friendlyApiError(error, l10n));
     }
   }
 
@@ -97,26 +99,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
+    final l10n = context.l10n;
 
     String? loginHelper;
     if (_checkingLogin) {
-      loginHelper = 'Проверка…';
+      loginHelper = l10n.checking;
     } else if (_loginAvailable == true) {
-      loginHelper = 'Логин свободен';
+      loginHelper = l10n.loginAvailable;
     } else if (_loginAvailable == false) {
-      loginHelper = 'Логин занят';
+      loginHelper = l10n.loginTaken;
     }
 
     return AuthScaffold(
-      title: 'Регистрация',
-      subtitle: 'Новый пользователь получает права viewer',
+      title: l10n.registerTitle,
+      subtitle: l10n.registerSubtitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextField(
             controller: _loginController,
             decoration: InputDecoration(
-              labelText: 'Логин',
+              labelText: l10n.loginLabel,
               helperText: loginHelper,
               suffixIcon: _loginAvailable == true
                   ? const Icon(Icons.check_circle_outline, color: TekColors.success)
@@ -131,8 +134,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           TextField(
             controller: _passwordController,
             decoration: InputDecoration(
-              labelText: 'Пароль',
-              helperText: '8+ символов, цифры и латиница',
+              labelText: l10n.passwordLabel,
+              helperText: l10n.passwordHelper,
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -145,7 +148,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           const SizedBox(height: 12),
           TextField(
             controller: _confirmController,
-            decoration: const InputDecoration(labelText: 'Подтверждение пароля'),
+            decoration: InputDecoration(labelText: l10n.confirmPasswordLabel),
             obscureText: _obscure,
             onSubmitted: (_) => _submit(),
           ),
@@ -154,13 +157,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             onPressed: auth.isLoading ? null : _submit,
             child: auth.isLoading
                 ? const TekLoadingIndicator(size: 24, compact: true)
-                : const Text('Зарегистрироваться'),
+                : Text(l10n.registerButton),
           ),
         ],
       ),
       footer: TextButton(
         onPressed: () => context.go('/login'),
-        child: const Text('Уже есть аккаунт? Войти'),
+        child: Text(l10n.hasAccountLogin),
       ),
     );
   }

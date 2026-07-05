@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/color_utils.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
+import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
 
@@ -14,6 +16,7 @@ class GroupFilterPanel extends StatelessWidget {
     required this.cachedWorkshops,
     required this.cachedSites,
     required this.cachedSensors,
+    required this.allSitesForFilter,
     required this.selectedSensorIds,
     required this.allSensorsSelected,
     required this.selectedWorkshopIds,
@@ -34,6 +37,8 @@ class GroupFilterPanel extends StatelessWidget {
   final List<Workshop>? cachedWorkshops;
   final List<Site>? cachedSites;
   final List<Sensor>? cachedSensors;
+  /// Full site list for client-side sensor filtering by workshop.
+  final List<Site> allSitesForFilter;
   final Set<int> selectedSensorIds;
   final bool allSensorsSelected;
   final Set<int> selectedWorkshopIds;
@@ -47,13 +52,25 @@ class GroupFilterPanel extends StatelessWidget {
   final String? connectionIssue;
   final bool embedded;
 
+  List<Site> _visibleSites(List<Site> sites) =>
+      filterSitesForPanel(sites, selectedWorkshopIds);
+
+  List<Sensor> _visibleSensors(List<Sensor> sensors) =>
+      filterSensorsForPanel(
+        sensors,
+        allSitesForFilter,
+        selectedSiteIds,
+        selectedWorkshopIds,
+      );
+
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (!embedded)
-          Text('Группировка', style: Theme.of(context).textTheme.labelSmall),
+          Text(l10n.groupingLabel, style: Theme.of(context).textTheme.labelSmall),
         if (connectionIssue != null) ...[
           if (!embedded) const SizedBox(height: 8),
           Row(
@@ -97,18 +114,20 @@ class GroupFilterPanel extends StatelessWidget {
   }
 
   Widget _buildWorkshops(BuildContext context) {
+    final l10n = context.l10n;
     return workshopsAsync.when(
       loading: () => cachedWorkshops != null
           ? _workshopChips(context, cachedWorkshops!)
           : const LinearProgressIndicator(),
       error: (e, _) => cachedWorkshops != null
           ? _workshopChips(context, cachedWorkshops!)
-          : _inlineError(context, 'Цеха: ${friendlyApiError(e)}'),
+          : _inlineError(context, l10n.workshopsLoadError(friendlyApiError(e, l10n))),
       data: (workshops) => _workshopChips(context, workshops),
     );
   }
 
   Widget _workshopChips(BuildContext context, List<Workshop> workshops) {
+    final l10n = context.l10n;
     final allActive = selectedWorkshopIds.isEmpty;
     return Wrap(
       spacing: 8,
@@ -116,7 +135,7 @@ class GroupFilterPanel extends StatelessWidget {
       children: [
         _allScopeChip(
           context: context,
-          label: const Text('Все цеха'),
+          label: Text(l10n.allWorkshops),
           active: allActive,
           onPressed: onWorkshopsAll,
         ),
@@ -139,23 +158,38 @@ class GroupFilterPanel extends StatelessWidget {
   }
 
   Widget _buildSites(BuildContext context) {
+    final l10n = context.l10n;
     return sitesAsync.when(
-      loading: () => cachedSites != null
-          ? _siteChips(context, cachedSites!)
-          : const LinearProgressIndicator(),
-      error: (e, _) => cachedSites != null
-          ? _siteChips(context, cachedSites!)
-          : _inlineError(context, 'Площадки: ${friendlyApiError(e)}'),
-      data: (sites) {
-        if (sites.isEmpty) {
-          return const Text('Нет площадок в выбранной группе');
+      loading: () {
+        final fallback = cachedSites ?? allSitesForFilter;
+        final visible = _visibleSites(fallback);
+        if (visible.isEmpty && selectedWorkshopIds.isNotEmpty) {
+          return Text(l10n.noSitesInGroup);
         }
-        return _siteChips(context, sites);
+        return visible.isEmpty
+            ? const LinearProgressIndicator()
+            : _siteChips(context, visible);
+      },
+      error: (e, _) {
+        final fallback = cachedSites ?? allSitesForFilter;
+        final visible = _visibleSites(fallback);
+        if (visible.isNotEmpty) {
+          return _siteChips(context, visible);
+        }
+        return _inlineError(context, l10n.sitesLoadError(friendlyApiError(e, l10n)));
+      },
+      data: (sites) {
+        final visible = _visibleSites(sites);
+        if (visible.isEmpty) {
+          return Text(l10n.noSitesInGroup);
+        }
+        return _siteChips(context, visible);
       },
     );
   }
 
   Widget _siteChips(BuildContext context, List<Site> sites) {
+    final l10n = context.l10n;
     final allActive = selectedSiteIds.isEmpty;
     return Wrap(
       spacing: 8,
@@ -163,7 +197,7 @@ class GroupFilterPanel extends StatelessWidget {
       children: [
         _allScopeChip(
           context: context,
-          label: const Text('Все площадки'),
+          label: Text(l10n.allSites),
           active: allActive,
           onPressed: onSitesAll,
         ),
@@ -183,30 +217,45 @@ class GroupFilterPanel extends StatelessWidget {
   }
 
   Widget _buildSensors(BuildContext context) {
+    final l10n = context.l10n;
     return sensorsAsync.when(
-      loading: () => cachedSensors != null
-          ? _sensorChips(context, cachedSensors!)
-          : const LinearProgressIndicator(),
-      error: (e, _) => cachedSensors != null
-          ? _sensorChips(context, cachedSensors!)
-          : _inlineError(context, 'Датчики: ${friendlyApiError(e)}'),
-      data: (sensors) {
-        if (sensors.isEmpty) {
-          return const Text('Нет датчиков в выбранной группе');
+      loading: () {
+        final fallback = cachedSensors ?? const <Sensor>[];
+        final visible = _visibleSensors(fallback);
+        if (visible.isEmpty && selectedWorkshopIds.isNotEmpty) {
+          return Text(l10n.noSensorsInGroup);
         }
-        return _sensorChips(context, sensors);
+        return visible.isEmpty
+            ? const LinearProgressIndicator()
+            : _sensorChips(context, visible);
+      },
+      error: (e, _) {
+        final fallback = cachedSensors ?? const <Sensor>[];
+        final visible = _visibleSensors(fallback);
+        if (visible.isNotEmpty) {
+          return _sensorChips(context, visible);
+        }
+        return _inlineError(context, l10n.sensorsLoadError(friendlyApiError(e, l10n)));
+      },
+      data: (sensors) {
+        final visible = _visibleSensors(sensors);
+        if (visible.isEmpty) {
+          return Text(l10n.noSensorsInGroup);
+        }
+        return _sensorChips(context, visible);
       },
     );
   }
 
   Widget _sensorChips(BuildContext context, List<Sensor> sensors) {
+    final l10n = context.l10n;
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         _allScopeChip(
           context: context,
-          label: const Text('Все датчики'),
+          label: Text(l10n.allSensors),
           active: allSensorsSelected,
           onPressed: onAllSensors,
         ),

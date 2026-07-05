@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/color_utils.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/features/dashboard/chart_series_utils.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
@@ -12,6 +13,7 @@ import 'package:tek_sensor_monitor/models/downtime.dart';
 import 'package:tek_sensor_monitor/models/reading_point.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
+import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 import 'package:tek_sensor_monitor/widgets/tek_interactive.dart';
 import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 
@@ -32,6 +34,7 @@ class ChartPanelCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     final panels = ref.watch(chartPanelsProvider);
     final panel = panels.firstWhere((p) => p.id == panelId);
     final range = ref.watch(panelTimeRangeProvider(panelId));
@@ -42,12 +45,14 @@ class ChartPanelCard extends ConsumerWidget {
     final workshopsAsync = ref.watch(workshopsProvider);
     final sitesAsync = ref.watch(panelSitesProvider(panelId));
     final sensorsAsync = ref.watch(panelSensorsProvider(panelId));
+    final allSitesAsync = ref.watch(sitesProvider);
     final cachedWorkshops = ref.watch(workshopsCacheProvider);
     final cachedSites = ref.watch(panelSitesCacheProvider(panelId));
     final cachedSensors = ref.watch(panelSensorsCacheProvider(panelId));
     final workshops = workshopsAsync.valueOrNull ?? cachedWorkshops ?? [];
     final sites = sitesAsync.valueOrNull ?? cachedSites ?? [];
     final sensors = sensorsAsync.valueOrNull ?? cachedSensors ?? [];
+    final allSitesForFilter = allSitesAsync.valueOrNull ?? sites;
 
     final presetSelected =
         panel.isLive && panel.liveSpan == null && panel.customRange == null;
@@ -69,20 +74,20 @@ class ChartPanelCard extends ConsumerWidget {
                 ],
                 Expanded(
                   child: Text(
-                    panel.displayTitle(panelIndex),
+                    panel.displayTitle(panelIndex, l10n),
                     style: theme.textTheme.titleSmall,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Переименовать',
+                  tooltip: l10n.renameTooltip,
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   visualDensity: VisualDensity.compact,
                   onPressed: () => _renamePanel(context, ref, panel),
                 ),
                 if (canRemove)
                   IconButton(
-                    tooltip: 'Удалить график',
+                    tooltip: l10n.removeChartTooltip,
                     icon: const Icon(Icons.close, size: 18),
                     visualDensity: VisualDensity.compact,
                     onPressed: () =>
@@ -96,13 +101,25 @@ class ChartPanelCard extends ConsumerWidget {
                 tilePadding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
                 childrenPadding: const EdgeInsets.only(bottom: 2),
-                title: Text('Группировка', style: theme.textTheme.labelSmall),
+                expandedAlignment: Alignment.centerLeft,
+                title: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    l10n.groupingLabel,
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
                 initiallyExpanded: false,
                 children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 96),
-                    child: SingleChildScrollView(
-                      child: GroupFilterPanel(
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 96),
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context)
+                            .copyWith(scrollbars: false),
+                        child: SingleChildScrollView(
+                          child: GroupFilterPanel(
                     embedded: true,
                     workshopsAsync: workshopsAsync,
                     sitesAsync: sitesAsync,
@@ -110,6 +127,7 @@ class ChartPanelCard extends ConsumerWidget {
                     cachedWorkshops: cachedWorkshops,
                     cachedSites: cachedSites,
                     cachedSensors: cachedSensors,
+                    allSitesForFilter: allSitesForFilter,
                     selectedSensorIds: panel.selectedSensorIds,
                     allSensorsSelected: panel.allSensors,
                     selectedWorkshopIds: panel.workshopIds,
@@ -124,6 +142,8 @@ class ChartPanelCard extends ConsumerWidget {
                     onAllSensors: () => setPanelAllSensors(ref, panelId),
                     onSensorToggle: (id, selected) =>
                         togglePanelSensor(ref, panelId, id, selected),
+                      ),
+                        ),
                       ),
                     ),
                   ),
@@ -144,12 +164,16 @@ class ChartPanelCard extends ConsumerWidget {
                       ?.where((e) => e.isOpen)
                       .toList() ??
                   const [],
+              workshopFilterIds: panel.workshopIds,
+              siteFilterIds: panel.siteIds,
+              l10n: l10n,
             ),
             const SizedBox(height: 4),
             Expanded(
               child: _buildChartArea(
                 ref: ref,
                 theme: theme,
+                l10n: l10n,
                 readingsAsync: readingsAsync,
                 cachedReadings: cachedReadings,
                 panel: panel,
@@ -172,28 +196,29 @@ class ChartPanelCard extends ConsumerWidget {
     WidgetRef ref,
     ChartPanelConfig panel,
   ) async {
+    final l10n = context.l10n;
     final controller = TextEditingController(text: panel.title);
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Название графика'),
+        title: Text(l10n.renameChartTitle),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'График 1',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: l10n.renameChartHint,
+            border: const OutlineInputBorder(),
           ),
           onSubmitted: (value) => Navigator.pop(context, value),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Сохранить'),
+            child: Text(l10n.save),
           ),
         ],
       ),
@@ -212,6 +237,7 @@ class ChartPanelCard extends ConsumerWidget {
     WidgetRef ref,
     ChartPanelConfig panel,
   ) async {
+    final l10n = context.l10n;
     final now = DateTime.now();
     final custom = panel.customRange;
     final picked = await showDateRangePicker(
@@ -224,7 +250,7 @@ class ChartPanelCard extends ConsumerWidget {
               start: now.subtract(const Duration(days: 1)),
               end: now,
             ),
-      helpText: 'Произвольный диапазон',
+      helpText: l10n.customRangeHelp,
     );
     if (picked != null) {
       setPanelHistoricalWindow(
@@ -258,6 +284,7 @@ class ChartPanelCard extends ConsumerWidget {
   Widget _buildChartArea({
     required WidgetRef ref,
     required ThemeData theme,
+    required AppLocalizations l10n,
     required AsyncValue<GroupedReadingsResponse> readingsAsync,
     required GroupedReadingsResponse? cachedReadings,
     required ChartPanelConfig panel,
@@ -267,15 +294,33 @@ class ChartPanelCard extends ConsumerWidget {
     required List<Sensor> sensors,
     List<DowntimeEvent> downtimeEvents = const [],
   }) {
-    final response = readingsAsync.valueOrNull ?? cachedReadings;
+    var response = readingsAsync.valueOrNull ?? cachedReadings;
+
+    if (response != null) {
+      final allowedIds = <int>{};
+      if (!panel.allSensors && panel.selectedSensorIds.isNotEmpty) {
+        allowedIds.addAll(panel.selectedSensorIds);
+      } else {
+        allowedIds.addAll(sensors.map((s) => s.id));
+      }
+      if (allowedIds.isNotEmpty) {
+        response = GroupedReadingsResponse(
+          series: response.series
+              .where((s) => allowedIds.contains(s.sensorId))
+              .toList(),
+        );
+      } else if (panel.workshopIds.isNotEmpty || panel.siteIds.isNotEmpty) {
+        response = const GroupedReadingsResponse(series: []);
+      }
+    }
 
     if (response == null) {
       return readingsAsync.when(
         loading: () => const Center(child: TekPageLoading()),
         error: (error, _) => ChartMessagePanel(
           icon: Icons.error_outline,
-          title: 'Не удалось загрузить данные',
-          subtitle: friendlyApiError(error),
+          title: l10n.loadDataErrorTitle,
+          subtitle: friendlyApiError(error, l10n),
           color: theme.colorScheme.error,
         ),
         data: (_) => const SizedBox.shrink(),
@@ -288,6 +333,7 @@ class ChartPanelCard extends ConsumerWidget {
     return _chartContent(
       ref: ref,
       theme: theme,
+      l10n: l10n,
       response: response,
       panel: panel,
       range: range,
@@ -296,7 +342,7 @@ class ChartPanelCard extends ConsumerWidget {
       sensors: sensors,
       isStale: isRefreshing || hasError,
       errorMessage: hasError
-          ? (connectionIssue ?? friendlyApiError(readingsAsync.error!))
+          ? (connectionIssue ?? friendlyApiError(readingsAsync.error!, l10n))
           : connectionIssue,
       downtimeEvents: downtimeEvents,
     );
@@ -305,6 +351,7 @@ class ChartPanelCard extends ConsumerWidget {
   Widget _chartContent({
     required WidgetRef ref,
     required ThemeData theme,
+    required AppLocalizations l10n,
     required GroupedReadingsResponse response,
     required ChartPanelConfig panel,
     required TimeRange range,
@@ -320,9 +367,8 @@ class ChartPanelCard extends ConsumerWidget {
     if (chartSeries.isEmpty) {
       return ChartMessagePanel(
         icon: Icons.show_chart,
-        title: 'Нет данных за выбранный период',
-        subtitle:
-            'Выберите датчик или группу и убедитесь, что телеметрия поступает.',
+        title: l10n.noDataForPeriodTitle,
+        subtitle: l10n.noDataForPeriodSubtitle,
         color: theme.colorScheme.secondary,
         compact: true,
       );
@@ -389,7 +435,7 @@ class ChartPanelCard extends ConsumerWidget {
           children: [
             Expanded(
               child: Text(
-                'Ток фазы · $pointsCount точек · ${chartSeries.length} ряд(ов)',
+                l10n.chartStats(pointsCount, chartSeries.length),
                 style: theme.textTheme.labelSmall,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -418,7 +464,7 @@ class ChartPanelCard extends ConsumerWidget {
             rangeEnd: range.end,
             isLiveWindow: panel.isLive,
             downtimeBands: bands,
-            onScaleWheel: (scale) => updatePanelScale(ref, panelId, scale),
+            onWheelZoom: (delta) => applyPanelWheelZoom(ref, panelId, delta),
             onVisibleRangeChanged: (start, end) {
               final span = end.difference(start);
               final isLive = end.isAfter(
@@ -525,10 +571,16 @@ class _DowntimeSummaryBar extends StatelessWidget {
   const _DowntimeSummaryBar({
     required this.summaryAsync,
     required this.openEvents,
+    required this.l10n,
+    this.workshopFilterIds = const {},
+    this.siteFilterIds = const {},
   });
 
   final AsyncValue<DowntimeSummary> summaryAsync;
   final List<DowntimeEvent> openEvents;
+  final AppLocalizations l10n;
+  final Set<int> workshopFilterIds;
+  final Set<int> siteFilterIds;
 
   @override
   Widget build(BuildContext context) {
@@ -537,6 +589,24 @@ class _DowntimeSummaryBar extends StatelessWidget {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (summary) {
+        final filteredOpenEvents = openEvents.where((event) {
+          if (workshopFilterIds.isNotEmpty &&
+              event.workshopId != null &&
+              !workshopFilterIds.contains(event.workshopId)) {
+            return false;
+          }
+          if (siteFilterIds.isNotEmpty &&
+              event.siteId != null &&
+              !siteFilterIds.contains(event.siteId)) {
+            return false;
+          }
+          return true;
+        }).toList();
+        final filteredWorkshops = workshopFilterIds.isEmpty
+            ? summary.workshops
+            : summary.workshops
+                .where((w) => workshopFilterIds.contains(w.workshopId))
+                .toList();
         final totalOffline = summary.sensors.fold<double>(
           0,
           (sum, row) => sum + row.offlineSeconds,
@@ -545,16 +615,17 @@ class _DowntimeSummaryBar extends StatelessWidget {
           0,
           (sum, row) => sum + row.idleSeconds,
         );
-        if (openEvents.isEmpty &&
+        if (filteredOpenEvents.isEmpty &&
             totalOffline <= 0 &&
-            totalIdle <= 0) {
+            totalIdle <= 0 &&
+            filteredWorkshops.isEmpty) {
           return const SizedBox.shrink();
         }
         return Wrap(
           spacing: 4,
           runSpacing: 2,
           children: [
-            for (final event in openEvents)
+            for (final event in filteredOpenEvents)
               Chip(
                 avatar: Icon(
                   event.isOffline ? Icons.cloud_off : Icons.pause_circle_outline,
@@ -562,8 +633,8 @@ class _DowntimeSummaryBar extends StatelessWidget {
                 ),
                 label: Text(
                   event.isOffline
-                      ? 'Offline · ${event.sensorName}'
-                      : 'Простой · ${event.sensorName}',
+                      ? l10n.downtimeOfflineChip(event.sensorName)
+                      : l10n.downtimeIdleChip(event.sensorName),
                   style: theme.textTheme.labelSmall,
                 ),
                 visualDensity: VisualDensity.compact,
@@ -574,7 +645,9 @@ class _DowntimeSummaryBar extends StatelessWidget {
               Chip(
                 avatar: const Icon(Icons.cloud_off, size: 12),
                 label: Text(
-                  'Offline: ${formatDowntimeDuration(totalOffline)}',
+                  l10n.downtimeOfflineTotal(
+                    formatDowntimeDuration(totalOffline, l10n),
+                  ),
                   style: theme.textTheme.labelSmall,
                 ),
                 visualDensity: VisualDensity.compact,
@@ -584,17 +657,21 @@ class _DowntimeSummaryBar extends StatelessWidget {
               Chip(
                 avatar: const Icon(Icons.pause_circle_outline, size: 12),
                 label: Text(
-                  'Простой: ${formatDowntimeDuration(totalIdle)}',
+                  l10n.downtimeIdleTotal(
+                    formatDowntimeDuration(totalIdle, l10n),
+                  ),
                   style: theme.textTheme.labelSmall,
                 ),
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-            for (final workshop in summary.workshops)
+            for (final workshop in filteredWorkshops)
               Chip(
                 label: Text(
-                  '${workshop.workshopName}: '
-                  '${formatDowntimeDuration(workshop.totalSeconds)}',
+                  l10n.workshopDowntimeChip(
+                    workshop.workshopName,
+                    formatDowntimeDuration(workshop.totalSeconds, l10n),
+                  ),
                   style: theme.textTheme.labelSmall,
                 ),
                 visualDensity: VisualDensity.compact,

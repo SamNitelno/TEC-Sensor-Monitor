@@ -1,24 +1,25 @@
 import 'package:dio/dio.dart';
+import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 
-String friendlyApiError(Object error) {
+String friendlyApiError(Object error, AppLocalizations l10n) {
   if (error is DioException) {
     switch (error.type) {
       case DioExceptionType.connectionError:
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.receiveTimeout:
-        return 'Нет связи с сервером';
+        return l10n.errorNoConnection;
       case DioExceptionType.badResponse:
         final code = error.response?.statusCode;
         final detail = _extractDetail(error.response?.data);
         if (detail != null) return detail;
-        if (code == 401) return 'Требуется вход';
-        if (code == 403) return 'Недостаточно прав';
-        return 'Ошибка сервера ($code)';
+        if (code == 401) return l10n.errorAuthRequired;
+        if (code == 403) return l10n.errorForbidden;
+        return l10n.errorServer(code ?? 0);
       default:
-        return 'Ошибка сети';
+        return l10n.errorNetwork;
     }
   }
-  return 'Ошибка загрузки';
+  return l10n.errorLoad;
 }
 
 String? _extractDetail(Object? data) {

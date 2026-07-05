@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/core/app_shell.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
+import 'package:tek_sensor_monitor/widgets/tek_sort_dropdown.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/groups/groups_screen.dart';
@@ -83,6 +85,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
   }
 
   Future<void> _setAllNotifications(bool enabled) async {
+    final l10n = context.l10n;
     try {
       await ref.read(apiClientProvider).setAllSensorNotifications(enabled: enabled);
       ref.invalidate(sensorsProvider);
@@ -91,8 +94,8 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
           SnackBar(
             content: Text(
               enabled
-                  ? 'Уведомления включены для всех датчиков'
-                  : 'Уведомления отключены для всех датчиков',
+                  ? l10n.notificationsEnabledAllSensors
+                  : l10n.notificationsDisabledAllSensors,
             ),
           ),
         );
@@ -100,7 +103,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyApiError(e))),
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
         );
       }
     }
@@ -108,13 +111,14 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final sensorsAsync = ref.watch(sensorsProvider);
     final sitesAsync = ref.watch(allSitesProvider);
     final sites = sitesAsync.valueOrNull ?? [];
 
     return sensorsAsync.when(
       loading: () => const TekPageLoading(),
-      error: (e, _) => Center(child: Text(friendlyApiError(e))),
+      error: (e, _) => Center(child: Text(friendlyApiError(e, l10n))),
       data: (sensors) {
         final filtered = _sortSensors(_filterSensors(sensors, sites), sites);
         final allEnabled =
@@ -128,13 +132,13 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: SearchBar(
                   controller: _searchController,
-                  hintText: 'Поиск по названию, площадке, device ID…',
+                  hintText: l10n.searchSensorsHint,
                   leading: const Icon(Icons.search),
                   trailing: _query.isEmpty
                       ? null
                       : [
                           IconButton(
-                            tooltip: 'Очистить',
+                            tooltip: l10n.clear,
                             icon: const Icon(Icons.clear),
                             onPressed: () {
                               _searchController.clear();
@@ -149,20 +153,20 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Row(
                   children: [
-                    DropdownButton<_SensorsSortField>(
+                    TekSortDropdown<_SensorsSortField>(
                       value: _sortField,
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: _SensorsSortField.name,
-                          child: Text('По алфавиту'),
+                          child: Text(l10n.sortAlphabetical),
                         ),
                         DropdownMenuItem(
                           value: _SensorsSortField.site,
-                          child: Text('По площадке'),
+                          child: Text(l10n.sortBySite),
                         ),
                         DropdownMenuItem(
                           value: _SensorsSortField.createdAt,
-                          child: Text('По дате создания'),
+                          child: Text(l10n.sortByCreatedAt),
                         ),
                       ],
                       onChanged: (value) {
@@ -172,7 +176,9 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                       },
                     ),
                     IconButton(
-                      tooltip: _sortAscending ? 'По возрастанию' : 'По убыванию',
+                      tooltip: _sortAscending
+                          ? l10n.sortAscending
+                          : l10n.sortDescending,
                       icon: Icon(
                         _sortAscending
                             ? Icons.arrow_upward
@@ -184,8 +190,8 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                     const Spacer(),
                     IconButton(
                       tooltip: allEnabled
-                          ? 'Отключить уведомления у всех'
-                          : 'Включить уведомления у всех',
+                          ? l10n.disableNotificationsAll
+                          : l10n.enableNotificationsAll,
                       icon: Icon(
                         allEnabled
                             ? Icons.notifications_active
@@ -204,6 +210,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                   itemBuilder: (context, index) {
                     final sensor = filtered[index];
                     final siteName = _siteName(sensor, sites);
+                    final itemL10n = context.l10n;
                     return Card(
                       child: ListTile(
                         leading: CircleAvatar(
@@ -223,8 +230,8 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                           children: [
                             IconButton(
                               tooltip: sensor.notificationsEnabled
-                                  ? 'Отключить уведомления'
-                                  : 'Включить уведомления',
+                                  ? itemL10n.disableNotifications
+                                  : itemL10n.enableNotifications,
                               icon: Icon(
                                 sensor.notificationsEnabled
                                     ? Icons.notifications_active_outlined
@@ -242,7 +249,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                               },
                             ),
                             IconButton(
-                              tooltip: 'Информация',
+                              tooltip: itemL10n.info,
                               icon: const Icon(Icons.info_outline, size: 20),
                               visualDensity: VisualDensity.compact,
                               onPressed: () =>
@@ -261,14 +268,14 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                                   await _deleteSensor(context, ref, sensor);
                                 }
                               },
-                              itemBuilder: (context) => const [
+                              itemBuilder: (context) => [
                                 PopupMenuItem(
                                   value: 'edit',
-                                  child: Text('Изменить'),
+                                  child: Text(itemL10n.edit),
                                 ),
                                 PopupMenuItem(
                                   value: 'delete',
-                                  child: Text('Удалить'),
+                                  child: Text(itemL10n.delete),
                                 ),
                               ],
                             ),
@@ -299,7 +306,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                 heroTag: 'add',
                 onPressed: () => _createSensor(context, ref, sites),
                 icon: const Icon(Icons.add),
-                label: const Text('Датчик'),
+                label: Text(l10n.sensorFab),
               ),
             ],
           ),
@@ -321,15 +328,17 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Новый датчик'),
+        builder: (context, setState) {
+          final l10n = context.l10n;
+          return AlertDialog(
+          title: Text(l10n.newSensorTitle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Название'),
+                  decoration: InputDecoration(labelText: l10n.name),
                 ),
                 TextField(
                   controller: deviceIdController,
@@ -338,11 +347,11 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                 if (sites.isNotEmpty)
                   DropdownButtonFormField<int?>(
                     value: siteId,
-                    decoration: const InputDecoration(labelText: 'Площадка'),
+                    decoration: InputDecoration(labelText: l10n.siteLabel),
                     items: [
-                      const DropdownMenuItem(
+                      DropdownMenuItem(
                         value: null,
-                        child: Text('Без площадки'),
+                        child: Text(l10n.noSite),
                       ),
                       ...sites.map(
                         (s) => DropdownMenuItem(value: s.id, child: Text(s.name)),
@@ -352,7 +361,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                   ),
                 const SizedBox(height: 12),
                 ColorPickerField(
-                  label: 'Цвет на графике',
+                  label: l10n.chartColorLabel,
                   value: color,
                   onChanged: (value) => setState(() => color = value),
                 ),
@@ -362,14 +371,15 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Создать'),
+              child: Text(l10n.create),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
 
@@ -388,8 +398,9 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
       }
     } catch (e) {
       if (context.mounted) {
+        final l10n = context.l10n;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyApiError(e))),
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
         );
       }
     }
@@ -417,24 +428,26 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Изменить датчик'),
+        builder: (context, setState) {
+          final l10n = context.l10n;
+          return AlertDialog(
+          title: Text(l10n.editSensorTitle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Название'),
+                  decoration: InputDecoration(labelText: l10n.name),
                 ),
                 if (sites.isNotEmpty)
                   DropdownButtonFormField<int?>(
                     value: siteId,
-                    decoration: const InputDecoration(labelText: 'Площадка'),
+                    decoration: InputDecoration(labelText: l10n.siteLabel),
                     items: [
-                      const DropdownMenuItem(
+                      DropdownMenuItem(
                         value: null,
-                        child: Text('Без площадки'),
+                        child: Text(l10n.noSite),
                       ),
                       ...sites.map(
                         (s) => DropdownMenuItem(value: s.id, child: Text(s.name)),
@@ -444,34 +457,34 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
                   ),
                 const SizedBox(height: 12),
                 ColorPickerField(
-                  label: 'Цвет на графике',
+                  label: l10n.chartColorLabel,
                   value: color,
                   onChanged: (value) => setState(() => color = value),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Детекция простоя',
+                  l10n.idleDetectionTitle,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 TextField(
                   controller: idlePowerController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Порог мощности, Вт (пусто = по умолчанию)',
+                  decoration: InputDecoration(
+                    labelText: l10n.idlePowerThresholdLabel,
                   ),
                 ),
                 TextField(
                   controller: idleCurrentController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Порог тока, А (фолбэк)',
+                  decoration: InputDecoration(
+                    labelText: l10n.idleCurrentThresholdLabel,
                   ),
                 ),
                 TextField(
                   controller: idleDurationController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Длительность простоя, сек',
+                  decoration: InputDecoration(
+                    labelText: l10n.idleDurationLabel,
                   ),
                 ),
               ],
@@ -480,14 +493,15 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Сохранить'),
+              child: Text(l10n.save),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
 
@@ -527,8 +541,9 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
       ref.invalidate(sensorsProvider);
     } catch (e) {
       if (context.mounted) {
+        final l10n = context.l10n;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyApiError(e))),
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
         );
       }
     }
@@ -541,20 +556,23 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить датчик?'),
+      builder: (context) {
+        final l10n = context.l10n;
+        return AlertDialog(
+        title: Text(l10n.deleteSensorTitle),
         content: Text(sensor.name),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
+            child: Text(l10n.delete),
           ),
         ],
-      ),
+      );
+      },
     );
     if (confirmed != true) return;
     await ref.read(apiClientProvider).deleteSensor(sensor.id);
@@ -567,8 +585,10 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
   ) {
     return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Датчик создан'),
+      builder: (context) {
+        final l10n = context.l10n;
+        return AlertDialog(
+        title: Text(l10n.sensorCreatedTitle),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -589,24 +609,25 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen> {
             onPressed: () => copyToClipboard(
               context,
               result.apiToken,
-              message: 'Токен скопирован',
+              message: l10n.tokenCopied,
             ),
-            child: const Text('Копировать токен'),
+            child: Text(l10n.copyToken),
           ),
           TextButton(
             onPressed: () => copyToClipboard(
               context,
               result.integration.copyText,
-              message: 'Сниппет скопирован',
+              message: l10n.snippetCopied,
             ),
-            child: const Text('Копировать сниппет'),
+            child: Text(l10n.copySnippet),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Готово'),
+            child: Text(l10n.done),
           ),
         ],
-      ),
+      );
+      },
     );
   }
 }

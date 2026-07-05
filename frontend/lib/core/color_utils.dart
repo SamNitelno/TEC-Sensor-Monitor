@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
+import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/current_chart.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
@@ -13,11 +14,11 @@ Color? parseHexColor(String? hex) {
   return Color(0xFF000000 | value);
 }
 
-String? validateHexColor(String? value) {
+String? validateHexColor(String? value, AppLocalizations l10n) {
   if (value == null || value.isEmpty) return null;
   final pattern = RegExp(r'^#[0-9A-Fa-f]{6}$');
   if (!pattern.hasMatch(value)) {
-    return 'Формат: #RRGGBB';
+    return l10n.hexColorFormat;
   }
   return null;
 }

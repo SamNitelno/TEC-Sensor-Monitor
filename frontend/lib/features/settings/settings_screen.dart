@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
+import 'package:tek_sensor_monitor/core/locale/locale_provider.dart';
 import 'package:tek_sensor_monitor/core/password_validation.dart';
+import 'package:tek_sensor_monitor/core/theme/app_theme.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/settings/contact_verification_dialog.dart';
 import 'package:tek_sensor_monitor/models/notification.dart';
 import 'package:tek_sensor_monitor/models/user.dart';
-import 'package:tek_sensor_monitor/core/theme/app_theme.dart';
 import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -48,6 +50,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _saveProfile() async {
+    final l10n = context.l10n;
     setState(() => _savingProfile = true);
     try {
       final api = ref.read(apiClientProvider);
@@ -81,14 +84,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ref.invalidate(profileProvider);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(sendResult.message ?? 'Профиль сохранён')),
+            SnackBar(content: Text(sendResult.message ?? l10n.profileSaved)),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyApiError(e))),
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
         );
       }
     } finally {
@@ -97,8 +100,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _changePassword() async {
+    final l10n = context.l10n;
     final newPassword = _newPasswordController.text;
-    final passwordError = validatePassword(newPassword);
+    final passwordError = validatePassword(newPassword, l10n);
     if (passwordError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(passwordError)),
@@ -107,7 +111,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     if (newPassword != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Пароли не совпадают')),
+        SnackBar(content: Text(l10n.passwordsDoNotMatch)),
       );
       return;
     }
@@ -123,13 +127,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _confirmPasswordController.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Пароль изменён')),
+          SnackBar(content: Text(l10n.passwordChanged)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyApiError(e))),
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
         );
       }
     } finally {
@@ -139,11 +143,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final profileAsync = ref.watch(profileProvider);
 
     return profileAsync.when(
       loading: () => const TekPageLoading(),
-      error: (e, _) => Center(child: Text(friendlyApiError(e))),
+      error: (e, _) => Center(child: Text(friendlyApiError(e, l10n))),
       data: (profile) {
         _initFromProfile(profile);
         return ListView(
@@ -155,34 +160,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Профиль', style: Theme.of(context).textTheme.titleLarge),
+                    Text(l10n.profileTitle,
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 4),
-                    Text('Роль: ${profile.role}', style: Theme.of(context).textTheme.bodyMedium),
+                    Text(l10n.roleLabel(profile.role),
+                        style: Theme.of(context).textTheme.bodyMedium),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _loginController,
-                      decoration: const InputDecoration(
-                        labelText: 'Логин',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.loginLabel,
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        helperText:
-                            'При изменении придёт код подтверждения на почту',
+                      decoration: InputDecoration(
+                        labelText: l10n.emailLabel,
+                        helperText: l10n.emailChangeHelper,
                       ),
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Телефон',
-                        helperText:
-                            'После email (если меняете оба) — код в SMS',
+                      decoration: InputDecoration(
+                        labelText: l10n.phoneLabel,
+                        helperText: l10n.phoneChangeHelper,
                       ),
                       keyboardType: TextInputType.phone,
                     ),
@@ -195,7 +200,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Сохранить профиль'),
+                          : Text(l10n.saveProfile),
                     ),
                   ],
                 ),
@@ -208,32 +213,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Смена пароля', style: Theme.of(context).textTheme.titleLarge),
+                    Text(l10n.changePasswordTitle,
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _currentPasswordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Текущий пароль',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.currentPasswordLabel,
+                        border: const OutlineInputBorder(),
                       ),
                       obscureText: true,
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _newPasswordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Новый пароль',
-                        border: OutlineInputBorder(),
-                        helperText: '8+ символов, цифры и латиница',
+                      decoration: InputDecoration(
+                        labelText: l10n.newPasswordLabel,
+                        border: const OutlineInputBorder(),
+                        helperText: l10n.passwordHelper,
                       ),
                       obscureText: true,
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _confirmPasswordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Подтверждение',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.confirmPasswordFieldLabel,
+                        border: const OutlineInputBorder(),
                       ),
                       obscureText: true,
                     ),
@@ -246,7 +252,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Сменить пароль'),
+                          : Text(l10n.changePasswordButton),
                     ),
                   ],
                 ),
@@ -259,18 +265,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Оформление', style: Theme.of(context).textTheme.titleLarge),
+                    Text(l10n.appearanceTitle,
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 16),
                     Consumer(
                       builder: (context, ref, _) {
                         final preference = ref.watch(themePreferenceProvider);
+                        final themeL10n = context.l10n;
                         return SegmentedButton<AppThemePreference>(
                           segments: [
                             for (final mode in AppThemePreference.values)
                               ButtonSegment(
                                 value: mode,
                                 icon: Icon(mode.icon, size: 18),
-                                label: Text(mode.label),
+                                label: Text(mode.label(themeL10n)),
                               ),
                           ],
                           selected: {preference},
@@ -286,16 +294,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     Consumer(
                       builder: (context, ref, _) {
                         final reduceMotion = ref.watch(reduceMotionProvider);
+                        final motionL10n = context.l10n;
                         return SwitchListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text('Уменьшить анимации'),
-                          subtitle: const Text(
-                            'Отключает эффекты интерфейса и графиков',
-                          ),
+                          title: Text(motionL10n.reduceMotionTitle),
+                          subtitle: Text(motionL10n.reduceMotionSubtitle),
                           value: reduceMotion,
                           onChanged: (value) => ref
                               .read(reduceMotionProvider.notifier)
                               .setEnabled(value),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(l10n.languageTitle,
+                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 16),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final language = ref.watch(languagePreferenceProvider);
+                        final langL10n = context.l10n;
+                        return SegmentedButton<AppLanguage>(
+                          segments: [
+                            ButtonSegment(
+                              value: AppLanguage.russian,
+                              label: Text(langL10n.languageRussian),
+                            ),
+                            ButtonSegment(
+                              value: AppLanguage.english,
+                              label: Text(langL10n.languageEnglish),
+                            ),
+                          ],
+                          selected: {language},
+                          onSelectionChanged: (selected) {
+                            ref
+                                .read(languagePreferenceProvider.notifier)
+                                .setLanguage(selected.first);
+                          },
                         );
                       },
                     ),
@@ -310,7 +355,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 context.go('/login');
               },
               icon: const Icon(Icons.logout),
-              label: const Text('Выйти из аккаунта'),
+              label: Text(l10n.signOutAccount),
             ),
           ],
         );

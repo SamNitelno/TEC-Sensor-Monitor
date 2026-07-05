@@ -1,3 +1,5 @@
+import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
+
 class DowntimeEvent {
   const DowntimeEvent({
     required this.id,
@@ -129,10 +131,10 @@ class DowntimeSummary {
   final List<WorkshopDowntimeSummary> workshops;
 }
 
-String formatDowntimeDuration(double seconds) {
-  if (seconds < 60) return '${seconds.round()} с';
-  if (seconds < 3600) return '${(seconds / 60).round()} мин';
+String formatDowntimeDuration(double seconds, AppLocalizations l10n) {
+  if (seconds < 60) return l10n.durationSeconds(seconds.round());
+  if (seconds < 3600) return l10n.durationMinutes((seconds / 60).round());
   final hours = seconds / 3600;
-  if (hours < 24) return '${hours.toStringAsFixed(1)} ч';
-  return '${(hours / 24).toStringAsFixed(1)} д';
+  if (hours < 24) return l10n.durationHours(hours.round());
+  return l10n.durationDays((hours / 24).round());
 }

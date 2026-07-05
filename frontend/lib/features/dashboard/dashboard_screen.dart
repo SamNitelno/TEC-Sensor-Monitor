@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
+import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
 import 'package:tek_sensor_monitor/features/dashboard/widgets/chart_panel_card.dart';
@@ -32,18 +34,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     super.dispose();
   }
 
-  String? _connectionIssue(AsyncValue workshops) {
-    if (workshops.hasError && isConnectionError(workshops.error!)) {
-      return 'Нет связи с сервером — показаны последние известные данные';
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final workshopsAsync = ref.watch(workshopsProvider);
     final panels = ref.watch(chartPanelsProvider);
-    final connectionIssue = _connectionIssue(workshopsAsync);
+    final connectionIssue = _connectionIssue(workshopsAsync, l10n);
 
     if (connectionIssue != null && !_connectionSnackShown) {
       _connectionSnackShown = true;
@@ -69,7 +65,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Row(
               children: [
                 Text(
-                  'Графики',
+                  l10n.chartsTitle,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const Spacer(),
@@ -77,7 +73,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   onPressed: () =>
                       ref.read(chartPanelsProvider.notifier).addPanel(),
                   icon: const Icon(Icons.add_chart, size: 16),
-                  label: const Text('Добавить график'),
+                  label: Text(l10n.addChart),
                   style: FilledButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -96,6 +92,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
       ),
     );
+  }
+
+  String? _connectionIssue(AsyncValue workshops, AppLocalizations l10n) {
+    if (workshops.hasError && isConnectionError(workshops.error!)) {
+      return l10n.connectionIssueBanner;
+    }
+    return null;
   }
 }
 

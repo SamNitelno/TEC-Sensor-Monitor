@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tek_sensor_monitor/core/debug_agent_log.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
 import 'package:tek_sensor_monitor/models/downtime.dart';
@@ -145,7 +146,9 @@ final panelSitesProvider =
     return sites;
   } catch (error) {
     final cached = ref.read(panelSitesCacheProvider(panelId));
-    if (cached != null) return cached;
+    if (cached != null) {
+      return filterSitesForPanel(cached, panel.workshopIds);
+    }
     rethrow;
   }
 });
@@ -163,7 +166,15 @@ final panelSensorsProvider =
     return sensors;
   } catch (error) {
     final cached = ref.read(panelSensorsCacheProvider(panelId));
-    if (cached != null) return cached;
+    if (cached != null) {
+      final sites = ref.read(panelSitesCacheProvider(panelId)) ?? [];
+      return filterSensorsForPanel(
+        cached,
+        sites,
+        panel.siteIds,
+        panel.workshopIds,
+      );
+    }
     rethrow;
   }
 });
@@ -193,16 +204,46 @@ final panelReadingsProvider =
   final panel = panelConfig(ref, panelId);
   final range = ref.watch(panelTimeRangeProvider(panelId));
   final bucket = panel.scale.bucket;
-  final sensors = ref.watch(panelSensorsProvider(panelId)).valueOrNull ??
-      ref.read(panelSensorsCacheProvider(panelId)) ??
-      [];
 
-  List<int> sensorIds;
+  List<Sensor> sensors;
+  try {
+    sensors = await ref.watch(panelSensorsProvider(panelId).future);
+  } catch (_) {
+    sensors = ref.read(panelSensorsCacheProvider(panelId)) ?? [];
+  }
+
+  List<int>? sensorIds;
   if (!panel.allSensors && panel.selectedSensorIds.isNotEmpty) {
     sensorIds = panel.selectedSensorIds.toList();
   } else if (sensors.isNotEmpty) {
     sensorIds = sensors.map((sensor) => sensor.id).toList();
-  } else {
+  }
+
+  final scopeFiltered = panel.workshopIds.isNotEmpty || panel.siteIds.isNotEmpty;
+  final allowedSensorIds = sensorIds?.toSet() ?? sensors.map((s) => s.id).toSet();
+  final workshopId =
+      panel.workshopIds.length == 1 ? panel.workshopIds.first : null;
+  final siteId = panel.siteIds.length == 1 ? panel.siteIds.first : null;
+
+  // #region agent log
+  agentDebugLog(
+    location: 'dashboard_providers.dart:panelReadingsProvider',
+    message: 'fetch grouped readings scope',
+    hypothesisId: 'B',
+    data: {
+      'panelId': panelId,
+      'workshopIds': panel.workshopIds.toList(),
+      'siteIds': panel.siteIds.toList(),
+      'sensorCount': sensors.length,
+      'sensorIdsParamCount': sensorIds?.length,
+      'scopeFiltered': scopeFiltered,
+      'workshopIdParam': workshopId,
+      'siteIdParam': siteId,
+    },
+  );
+  // #endregion
+
+  if (scopeFiltered && allowedSensorIds.isEmpty && workshopId == null && siteId == null) {
     return const GroupedReadingsResponse(series: []);
   }
 
@@ -212,13 +253,44 @@ final panelReadingsProvider =
       to: range.end,
       bucket: bucket,
       sensorIds: sensorIds,
+      workshopId: workshopId,
+      siteId: siteId,
     );
-    ref.read(panelReadingsCacheProvider(panelId).notifier).state = response;
-    return response;
+    final filteredSeries = scopeFiltered && allowedSensorIds.isEmpty
+        ? response.series
+        : allowedSensorIds.isEmpty
+            ? response.series
+            : response.series
+                .where((s) => allowedSensorIds.contains(s.sensorId))
+                .toList();
+    final filtered = GroupedReadingsResponse(series: filteredSeries);
+    // #region agent log
+    agentDebugLog(
+      location: 'dashboard_providers.dart:panelReadingsProvider:result',
+      message: 'readings fetched',
+      hypothesisId: 'A',
+      data: {
+        'panelId': panelId,
+        'rawSeriesCount': response.series.length,
+        'filteredSeriesCount': filteredSeries.length,
+        'seriesSensorIds': filteredSeries.map((s) => s.sensorId).toList(),
+        'seriesNames': filteredSeries.map((s) => s.sensorName).toList(),
+      },
+    );
+    // #endregion
+    ref.read(panelReadingsCacheProvider(panelId).notifier).state = filtered;
+    return filtered;
   } catch (error) {
     final cached = ref.read(panelReadingsCacheProvider(panelId));
     if (cached != null) {
-      return cached;
+      final filteredCached = allowedSensorIds.isEmpty
+          ? cached.series
+          : cached.series
+              .where((s) => allowedSensorIds.contains(s.sensorId))
+              .toList();
+      if (filteredCached.isNotEmpty) {
+        return GroupedReadingsResponse(series: filteredCached);
+      }
     }
     rethrow;
   }
@@ -297,7 +369,80 @@ void updatePanelScaleFromZoom(WidgetRef ref, String panelId, ChartScale scale) {
       );
 }
 
+/// Mouse wheel zooms the visible time window (not aggregation bucket directly).
+void applyPanelWheelZoom(WidgetRef ref, String panelId, double scrollDelta) {
+  if (scrollDelta == 0) return;
+
+  final panel = ref
+      .read(chartPanelsProvider)
+      .firstWhere((item) => item.id == panelId);
+  final range = ref.read(panelTimeRangeProvider(panelId));
+  final span = range.end.difference(range.start);
+
+  const minSpan = Duration(seconds: 30);
+  const maxSpan = Duration(days: 365);
+
+  // Scroll down = wider window, scroll up = narrower window.
+  final factor = scrollDelta > 0 ? 1.12 : 0.88;
+  var newMs = (span.inMilliseconds * factor).round();
+  newMs = newMs.clamp(minSpan.inMilliseconds, maxSpan.inMilliseconds);
+  final newSpan = Duration(milliseconds: newMs);
+
+  updatePanelScaleFromZoom(ref, panelId, chartScaleForVisibleSpan(newSpan));
+
+  if (panel.isLive) {
+    setPanelLiveWindow(ref, panelId, span: newSpan);
+    return;
+  }
+
+  setPanelHistoricalWindow(
+    ref,
+    panelId,
+    TimeRange(start: range.end.subtract(newSpan), end: range.end),
+  );
+}
+
+void _invalidatePanelData(WidgetRef ref, String panelId) {
+  ref.read(panelSitesCacheProvider(panelId).notifier).state = null;
+  ref.read(panelSensorsCacheProvider(panelId).notifier).state = null;
+  ref.read(panelReadingsCacheProvider(panelId).notifier).state = null;
+  ref.invalidate(panelSitesProvider(panelId));
+  ref.invalidate(panelSensorsProvider(panelId));
+  ref.invalidate(panelReadingsProvider(panelId));
+  ref.invalidate(panelDowntimeEventsProvider(panelId));
+  ref.invalidate(panelDowntimeSummaryProvider(panelId));
+}
+
+List<Site> filterSitesForPanel(List<Site> sites, Set<int> workshopIds) {
+  if (workshopIds.isEmpty) return sites;
+  return sites.where((s) => workshopIds.contains(s.workshopId)).toList();
+}
+
+List<Sensor> filterSensorsForPanel(
+  List<Sensor> sensors,
+  List<Site> sites,
+  Set<int> siteIds,
+  Set<int> workshopIds,
+) {
+  if (siteIds.isNotEmpty) {
+    return sensors
+        .where((s) => s.siteId != null && siteIds.contains(s.siteId))
+        .toList();
+  }
+  if (workshopIds.isNotEmpty) {
+    final allowedSiteIds = sites
+        .where((s) => workshopIds.contains(s.workshopId))
+        .map((s) => s.id)
+        .toSet();
+    return sensors
+        .where((s) => s.siteId != null && allowedSiteIds.contains(s.siteId))
+        .toList();
+  }
+  return sensors;
+}
+
 void setPanelWorkshopsAll(WidgetRef ref, String panelId) {
+  _invalidatePanelData(ref, panelId);
   ref.read(chartPanelsProvider.notifier).updatePanel(
         panelId,
         (panel) => panel.copyWith(
@@ -320,10 +465,27 @@ void togglePanelWorkshop(
       .firstWhere((item) => item.id == panelId);
   final current = {...panel.workshopIds};
   if (selected) {
-    current.add(workshopId);
+    // Single-select: one active workshop at a time.
+    current
+      ..clear()
+      ..add(workshopId);
   } else {
     current.remove(workshopId);
   }
+  _invalidatePanelData(ref, panelId);
+  // #region agent log
+  agentDebugLog(
+    location: 'dashboard_providers.dart:togglePanelWorkshop',
+    message: 'workshop toggled',
+    hypothesisId: 'D',
+    data: {
+      'panelId': panelId,
+      'workshopId': workshopId,
+      'selected': selected,
+      'newWorkshopIds': current.toList(),
+    },
+  );
+  // #endregion
   ref.read(chartPanelsProvider.notifier).updatePanel(
         panelId,
         (p) => p.copyWith(
@@ -336,6 +498,7 @@ void togglePanelWorkshop(
 }
 
 void setPanelSitesAll(WidgetRef ref, String panelId) {
+  _invalidatePanelData(ref, panelId);
   ref.read(chartPanelsProvider.notifier).updatePanel(
         panelId,
         (panel) => panel.copyWith(
@@ -357,10 +520,14 @@ void togglePanelSite(
       .firstWhere((item) => item.id == panelId);
   final current = {...panel.siteIds};
   if (selected) {
-    current.add(siteId);
+    // Single-select: one active site at a time.
+    current
+      ..clear()
+      ..add(siteId);
   } else {
     current.remove(siteId);
   }
+  _invalidatePanelData(ref, panelId);
   ref.read(chartPanelsProvider.notifier).updatePanel(
         panelId,
         (p) => p.copyWith(
@@ -390,6 +557,8 @@ void togglePanelSensor(
   final panel = ref
       .read(chartPanelsProvider)
       .firstWhere((item) => item.id == panelId);
+  ref.invalidate(panelReadingsProvider(panelId));
+  ref.read(panelReadingsCacheProvider(panelId).notifier).state = null;
   if (selected) {
     final current = {...panel.selectedSensorIds, sensorId};
     ref.read(chartPanelsProvider.notifier).updatePanel(

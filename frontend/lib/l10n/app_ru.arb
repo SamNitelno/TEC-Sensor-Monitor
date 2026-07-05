@@ -1,0 +1,421 @@
+{
+  "@@locale": "ru",
+  "appTitle": "ТЭК · Мониторинг датчиков",
+  "appTitleShort": "ТЭК · Мониторинг",
+  "initializing": "Инициализация…",
+  "loading": "Загрузка…",
+  "checking": "Проверка…",
+  "cancel": "Отмена",
+  "save": "Сохранить",
+  "create": "Создать",
+  "delete": "Удалить",
+  "edit": "Изменить",
+  "done": "Готово",
+  "close": "Закрыть",
+  "confirm": "Подтвердить",
+  "clear": "Очистить",
+  "name": "Название",
+  "info": "Информация",
+  "noData": "Нет данных",
+  "copiedToClipboard": "Скопировано в буфер обмена",
+  "tokenCopied": "Токен скопирован",
+  "snippetCopied": "Сниппет скопирован",
+  "later": "Позже",
+  "allow": "Разрешить",
+  "selectPlaceholder": "— выберите —",
+  "sortLabel": "Сортировка",
+  "sortAlphabetical": "По алфавиту",
+  "sortBySite": "По площадке",
+  "sortByWorkshop": "По цеху",
+  "sortByCreatedAt": "По дате создания",
+  "sortByRegistrationDate": "По дате регистрации",
+  "sortByRole": "По роли",
+  "sortAscending": "По возрастанию",
+  "sortDescending": "По убыванию",
+  "searchSensorsHint": "Поиск по названию, площадке, device ID…",
+  "searchWorkshopsHint": "Поиск по названию…",
+  "searchSitesHint": "Поиск по названию, цеху…",
+  "searchUsersHint": "Поиск по логину, роли, email…",
+  "searchResultsCount": "Найдено: {found} из {total}",
+  "@searchResultsCount": {
+    "placeholders": {
+      "found": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "nothingFound": "Ничего не найдено",
+  "notificationsTitle": "Уведомления",
+  "markAllRead": "Прочитать все",
+  "loadingNotifications": "Загрузка уведомлений…",
+  "noNewNotifications": "Нет новых уведомлений",
+  "enableNotifications": "Включить уведомления",
+  "disableNotifications": "Отключить уведомления",
+  "enableNotificationsAll": "Включить уведомления у всех",
+  "disableNotificationsAll": "Отключить уведомления у всех",
+  "enableWorkshopNotifications": "Включить уведомления цеха",
+  "disableWorkshopNotifications": "Отключить уведомления цеха",
+  "enableSiteNotifications": "Включить уведомления площадки",
+  "disableSiteNotifications": "Отключить уведомления площадки",
+  "notificationsEnabledAllSensors": "Уведомления включены для всех датчиков",
+  "notificationsDisabledAllSensors": "Уведомления отключены для всех датчиков",
+  "notificationsEnabledAllWorkshops": "Уведомления включены для всех цехов",
+  "notificationsDisabledAllWorkshops": "Уведомления отключены для всех цехов",
+  "notificationsEnabledAllSites": "Уведомления включены для всех площадок",
+  "notificationsDisabledAllSites": "Уведомления отключены для всех площадок",
+  "notificationsDisabledTitle": "Уведомления отключены",
+  "notificationsDisabledBody": "Чтобы получать сообщения о повышении и понижении прав, разрешите уведомления в настройках системы или браузера.",
+  "notificationChannelName": "Изменения прав",
+  "notificationChannelDescription": "Повышение и понижение пользователей",
+  "loginTitle": "Вход в систему мониторинга датчиков",
+  "loginLabel": "Логин",
+  "passwordLabel": "Пароль",
+  "signIn": "Войти",
+  "noAccountRegister": "Нет аккаунта? Зарегистрироваться",
+  "loginError": "Ошибка входа: {error}",
+  "@loginError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "registerTitle": "Регистрация",
+  "registerSubtitle": "Новый пользователь получает права viewer",
+  "confirmPasswordLabel": "Подтверждение пароля",
+  "passwordHelper": "8+ символов, цифры и латиница",
+  "registerButton": "Зарегистрироваться",
+  "hasAccountLogin": "Уже есть аккаунт? Войти",
+  "loginAvailable": "Логин свободен",
+  "loginTaken": "Логин занят",
+  "loginAlreadyTaken": "Логин уже занят",
+  "passwordsDoNotMatch": "Пароли не совпадают",
+  "passwordMinLength": "Минимум 8 символов",
+  "passwordNeedsDigit": "Нужна хотя бы одна цифра",
+  "passwordNeedsLatin": "Нужны латинские буквы",
+  "emailVerificationTitle": "Подтверждение email",
+  "phoneVerificationTitle": "Подтверждение телефона",
+  "emailCodeHint": "Введите код из письма",
+  "smsCodeHint": "Введите код из SMS",
+  "codeTooShort": "Введите код из письма или SMS",
+  "codeSentTo": "Код отправлен на {destination}",
+  "@codeSentTo": {
+    "placeholders": {
+      "destination": {"type": "String"}
+    }
+  },
+  "profileTitle": "Профиль",
+  "roleLabel": "Роль: {role}",
+  "@roleLabel": {
+    "placeholders": {
+      "role": {"type": "String"}
+    }
+  },
+  "emailLabel": "Email",
+  "emailChangeHelper": "При изменении придёт код подтверждения на почту",
+  "phoneLabel": "Телефон",
+  "phoneChangeHelper": "После email (если меняете оба) — код в SMS",
+  "saveProfile": "Сохранить профиль",
+  "profileSaved": "Профиль сохранён",
+  "changePasswordTitle": "Смена пароля",
+  "currentPasswordLabel": "Текущий пароль",
+  "newPasswordLabel": "Новый пароль",
+  "confirmPasswordFieldLabel": "Подтверждение",
+  "changePasswordButton": "Сменить пароль",
+  "passwordChanged": "Пароль изменён",
+  "appearanceTitle": "Оформление",
+  "languageTitle": "Язык",
+  "languageRussian": "Русский",
+  "languageEnglish": "English",
+  "reduceMotionTitle": "Уменьшить анимации",
+  "reduceMotionSubtitle": "Отключает эффекты интерфейса и графиков",
+  "signOutAccount": "Выйти из аккаунта",
+  "sensorFab": "Датчик",
+  "newSensorTitle": "Новый датчик",
+  "editSensorTitle": "Изменить датчик",
+  "deleteSensorTitle": "Удалить датчик?",
+  "sensorCreatedTitle": "Датчик создан",
+  "siteLabel": "Площадка",
+  "noSite": "Без площадки",
+  "chartColorLabel": "Цвет на графике",
+  "idleDetectionTitle": "Детекция простоя",
+  "idlePowerThresholdLabel": "Порог мощности, Вт (пусто = по умолчанию)",
+  "idleCurrentThresholdLabel": "Порог тока, А (фолбэк)",
+  "idleDurationLabel": "Длительность простоя, сек",
+  "copyToken": "Копировать токен",
+  "copySnippet": "Копировать сниппет",
+  "sensorInfoTitle": "Информация о датчике",
+  "colorValue": "Цвет: {color}",
+  "@colorValue": {
+    "placeholders": {
+      "color": {"type": "String"}
+    }
+  },
+  "createdAt": "Создан: {date}{byLogin}",
+  "@createdAt": {
+    "placeholders": {
+      "date": {"type": "String"},
+      "byLogin": {"type": "String"}
+    }
+  },
+  "currentPlacement": "Текущее размещение: {workshop}{site}",
+  "@currentPlacement": {
+    "placeholders": {
+      "workshop": {"type": "String"},
+      "site": {"type": "String"}
+    }
+  },
+  "placementHistoryTitle": "История размещения",
+  "placementHistoryEmpty": "История пуста",
+  "tabWorkshops": "Цеха",
+  "tabSites": "Площадки",
+  "noWorkshops": "Нет цехов",
+  "noSites": "Нет площадок",
+  "fabWorkshop": "Цех",
+  "fabSite": "Площадка",
+  "newWorkshopTitle": "Новый цех",
+  "editWorkshopTitle": "Изменить цех",
+  "newSiteTitle": "Новая площадка",
+  "editSiteTitle": "Изменить площадку",
+  "workshopLabel": "Цех",
+  "dashboardColorLabel": "Цвет на дашборде",
+  "workshopFallback": "цех #{id}",
+  "@workshopFallback": {
+    "placeholders": {
+      "id": {"type": "int"}
+    }
+  },
+  "siteWorkshopSubtitle": "Цех: {workshopName}",
+  "@siteWorkshopSubtitle": {
+    "placeholders": {
+      "workshopName": {"type": "String"}
+    }
+  },
+  "noUsers": "Нет пользователей",
+  "youChip": "вы",
+  "promoteToAdmin": "Назначить admin",
+  "demoteToViewer": "Понизить до viewer",
+  "promotedSnack": "{login} назначен admin",
+  "@promotedSnack": {
+    "placeholders": {
+      "login": {"type": "String"}
+    }
+  },
+  "demotedSnack": "{login} понижен до viewer",
+  "@demotedSnack": {
+    "placeholders": {
+      "login": {"type": "String"}
+    }
+  },
+  "chartsTitle": "Графики",
+  "addChart": "Добавить график",
+  "connectionIssueBanner": "Нет связи с сервером — показаны последние известные данные",
+  "groupingLabel": "Группировка",
+  "renameChartTitle": "Название графика",
+  "renameChartHint": "График 1",
+  "defaultChartTitle": "График {index}",
+  "@defaultChartTitle": {
+    "placeholders": {
+      "index": {"type": "int"}
+    }
+  },
+  "renameTooltip": "Переименовать",
+  "removeChartTooltip": "Удалить график",
+  "customRangeHelp": "Произвольный диапазон",
+  "periodLabel": "Период:",
+  "customPeriod": "Свой",
+  "loadDataErrorTitle": "Не удалось загрузить данные",
+  "noDataForPeriodTitle": "Нет данных за выбранный период",
+  "noDataForPeriodSubtitle": "Выберите датчик или группу и убедитесь, что телеметрия поступает.",
+  "chartStats": "Ток фазы · {pointsCount} точек · {seriesCount} ряд(ов)",
+  "@chartStats": {
+    "placeholders": {
+      "pointsCount": {"type": "int"},
+      "seriesCount": {"type": "int"}
+    }
+  },
+  "currentAxisTitle": "Ток, А",
+  "workshopsLabel": "Цеха:",
+  "allWorkshops": "Все цеха",
+  "sitesLabel": "Площадки:",
+  "allSites": "Все площадки",
+  "sensorsLabel": "Датчики:",
+  "allSensors": "Все датчики",
+  "noSitesInGroup": "Нет площадок в выбранной группе",
+  "noSensorsInGroup": "Нет датчиков в выбранной группе",
+  "workshopsLoadError": "Цеха: {error}",
+  "@workshopsLoadError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "sitesLoadError": "Площадки: {error}",
+  "@sitesLoadError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "sensorsLoadError": "Датчики: {error}",
+  "@sensorsLoadError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "downtimeOfflineChip": "Offline · {sensorName}",
+  "@downtimeOfflineChip": {
+    "placeholders": {
+      "sensorName": {"type": "String"}
+    }
+  },
+  "downtimeIdleChip": "Простой · {sensorName}",
+  "@downtimeIdleChip": {
+    "placeholders": {
+      "sensorName": {"type": "String"}
+    }
+  },
+  "downtimeOfflineTotal": "Offline: {duration}",
+  "@downtimeOfflineTotal": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "downtimeIdleTotal": "Простой: {duration}",
+  "@downtimeIdleTotal": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "workshopDowntimeChip": "{workshopName}: {duration}",
+  "@workshopDowntimeChip": {
+    "placeholders": {
+      "workshopName": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
+  "timePresetMinute": "Мин",
+  "timePresetHour": "Час",
+  "timePresetDay": "День",
+  "timePresetWeek": "Неделя",
+  "timePresetMonth": "Месяц",
+  "timePresetYear": "Год",
+  "chartScaleSeconds": "Сек",
+  "chartScaleMinutes": "Мин",
+  "chartScaleHours": "Ч",
+  "chartScaleDays": "Дн",
+  "chartScaleWeeks": "Нед",
+  "chartScaleMonths": "Мес",
+  "chartScaleYears": "Год",
+  "durationSeconds": "{count} с",
+  "@durationSeconds": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "durationMinutes": "{count} мин",
+  "@durationMinutes": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "durationHours": "{hours} ч",
+  "@durationHours": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "durationDays": "{days} д",
+  "@durationDays": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "provisioningTitle": "Привязка ESP по BLE",
+  "provisioningUnavailableWeb": "BLE-привязка недоступна в браузере — используйте телефон или десктоп-приложение",
+  "rescanTooltip": "Сканировать снова",
+  "scanInstructions": "Найдите ESP в режиме привязки (имя начинается с TEC-ESP). Убедитесь, что Bluetooth включён.",
+  "scanning": "Сканирование…",
+  "noDevicesFound": "Устройства не найдены",
+  "connectFailed": "Не удалось подключиться: {error}",
+  "@connectFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "tokenFetchFailed": "Не удалось получить токен: {error}",
+  "@tokenFetchFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "selectDeviceAndSensor": "Выберите ESP и зарегистрированный датчик",
+  "ssidRequired": "Укажите SSID Wi-Fi",
+  "onlineTimeout": "Датчик не перешёл в online за 90 с. Проверьте Wi-Fi и URL сервера.",
+  "connectedTo": "Подключено: {deviceName}",
+  "@connectedTo": {
+    "placeholders": {
+      "deviceName": {"type": "String"}
+    }
+  },
+  "wifiSsidLabel": "SSID Wi-Fi",
+  "wifiPasswordLabel": "Пароль Wi-Fi",
+  "ingestUrlLabel": "URL приёма (ingest)",
+  "ingestUrlHelper": "POST /api/v1/ingest — LAN-IP, не localhost",
+  "systemSensorLabel": "Датчик в системе",
+  "tokenLoaded": "Токен загружен с сервера ({length} симв.)",
+  "@tokenLoaded": {
+    "placeholders": {
+      "length": {"type": "int"}
+    }
+  },
+  "commitButton": "Записать и привязать",
+  "selectOtherDevice": "Выбрать другое устройство",
+  "provisioningSensorsLoadError": "Ошибка загрузки датчиков: {error}",
+  "@provisioningSensorsLoadError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "waitingTelemetry": "Ожидание первой телеметрии…",
+  "waitingDescription": "ESP подключается к Wi-Fi и отправляет данные",
+  "successOnline": "Датчик {name} online",
+  "@successOnline": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "bleServiceNotFound": "Сервис привязки не найден",
+  "bleCharacteristicNotFound": "Характеристика {uuid} не найдена",
+  "@bleCharacteristicNotFound": {
+    "placeholders": {
+      "uuid": {"type": "String"}
+    }
+  },
+  "themeTooltip": "Тема: {theme}",
+  "@themeTooltip": {
+    "placeholders": {
+      "theme": {"type": "String"}
+    }
+  },
+  "themeSystem": "Системная",
+  "themeLight": "Светлая",
+  "themeDark": "Тёмная",
+  "hexColorFormat": "Формат: #RRGGBB",
+  "errorNoConnection": "Нет связи с сервером",
+  "errorAuthRequired": "Требуется вход",
+  "errorForbidden": "Недостаточно прав",
+  "errorServer": "Ошибка сервера ({code})",
+  "@errorServer": {
+    "placeholders": {
+      "code": {"type": "int"}
+    }
+  },
+  "errorNetwork": "Ошибка сети",
+  "errorLoad": "Ошибка загрузки",
+  "navMonitoring": "Мониторинг",
+  "navAppSubtitle": "ТЭК · Мониторинг датчиков",
+  "bleProvisioningTooltip": "Привязка ESP по BLE",
+  "accountTooltip": "Аккаунт",
+  "navSettings": "Настройки",
+  "signOut": "Выйти",
+  "navDashboard": "Дашборд",
+  "navSensors": "Датчики",
+  "navGroups": "Группы",
+  "navUsers": "Пользователи"
+}

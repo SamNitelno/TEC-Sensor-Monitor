@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/models/user.dart';
 import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
+import 'package:tek_sensor_monitor/widgets/tek_sort_dropdown.dart';
 
 enum _UsersSortField { login, createdAt, role }
 
@@ -67,13 +69,14 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final usersAsync = ref.watch(usersProvider);
     final profileAsync = ref.watch(profileProvider);
     final currentUserId = profileAsync.valueOrNull?.id;
 
     return usersAsync.when(
       loading: () => const TekPageLoading(),
-      error: (e, _) => Center(child: Text(friendlyApiError(e))),
+      error: (e, _) => Center(child: Text(friendlyApiError(e, l10n))),
       data: (users) {
         final filtered = _sortUsers(_filterUsers(users));
         return Column(
@@ -83,13 +86,13 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: SearchBar(
                 controller: _searchController,
-                hintText: 'Поиск по логину, роли, email…',
+                hintText: l10n.searchUsersHint,
                 leading: const Icon(Icons.search),
                 trailing: _query.isEmpty
                     ? null
                     : [
                         IconButton(
-                          tooltip: 'Очистить',
+                          tooltip: l10n.clear,
                           icon: const Icon(Icons.clear),
                           onPressed: () {
                             _searchController.clear();
@@ -105,27 +108,26 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
               child: Row(
                 children: [
                   Text(
-                    'Сортировка',
+                    l10n.sortLabel,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: DropdownButton<_UsersSortField>(
+                    child: TekSortDropdown<_UsersSortField>(
                       isExpanded: true,
                       value: _sortField,
-                      underline: const SizedBox.shrink(),
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: _UsersSortField.login,
-                          child: Text('По алфавиту'),
+                          child: Text(l10n.sortAlphabetical),
                         ),
                         DropdownMenuItem(
                           value: _UsersSortField.createdAt,
-                          child: Text('По дате регистрации'),
+                          child: Text(l10n.sortByRegistrationDate),
                         ),
                         DropdownMenuItem(
                           value: _UsersSortField.role,
-                          child: Text('По роли'),
+                          child: Text(l10n.sortByRole),
                         ),
                       ],
                       onChanged: (value) {
@@ -137,8 +139,8 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                   ),
                   IconButton(
                     tooltip: _sortAscending
-                        ? 'По возрастанию'
-                        : 'По убыванию',
+                        ? l10n.sortAscending
+                        : l10n.sortDescending,
                     icon: Icon(
                       _sortAscending
                           ? Icons.arrow_upward
@@ -154,7 +156,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
-                  'Найдено: ${filtered.length} из ${users.length}',
+                  l10n.searchResultsCount(filtered.length, users.length),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
@@ -163,8 +165,8 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                   ? Center(
                       child: Text(
                         _query.isEmpty
-                            ? 'Нет пользователей'
-                            : 'Ничего не найдено',
+                            ? l10n.noUsers
+                            : l10n.nothingFound,
                       ),
                     )
                   : ListView.separated(
@@ -217,19 +219,20 @@ class _UserActionsState extends ConsumerState<_UserActions> {
   bool _busy = false;
 
   Future<void> _promote() async {
+    final l10n = context.l10n;
     setState(() => _busy = true);
     try {
       await ref.read(apiClientProvider).promoteUser(widget.user.id);
       widget.onChanged();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${widget.user.login} назначен admin')),
+          SnackBar(content: Text(l10n.promotedSnack(widget.user.login))),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyApiError(e))),
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
         );
       }
     } finally {
@@ -238,19 +241,20 @@ class _UserActionsState extends ConsumerState<_UserActions> {
   }
 
   Future<void> _demote() async {
+    final l10n = context.l10n;
     setState(() => _busy = true);
     try {
       await ref.read(apiClientProvider).demoteUser(widget.user.id);
       widget.onChanged();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${widget.user.login} понижен до viewer')),
+          SnackBar(content: Text(l10n.demotedSnack(widget.user.login))),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyApiError(e))),
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
         );
       }
     } finally {
@@ -260,6 +264,7 @@ class _UserActionsState extends ConsumerState<_UserActions> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (_busy) {
       return const SizedBox(
         width: 24,
@@ -269,19 +274,19 @@ class _UserActionsState extends ConsumerState<_UserActions> {
     }
 
     if (widget.user.id == widget.currentUserId) {
-      return const Chip(label: Text('вы'));
+      return Chip(label: Text(l10n.youChip));
     }
 
     if (widget.user.isAdmin) {
       return IconButton(
-        tooltip: 'Понизить до viewer',
+        tooltip: l10n.demoteToViewer,
         icon: const Icon(Icons.arrow_downward),
         onPressed: _demote,
       );
     }
 
     return IconButton(
-      tooltip: 'Назначить admin',
+      tooltip: l10n.promoteToAdmin,
       icon: const Icon(Icons.arrow_upward),
       onPressed: _promote,
     );

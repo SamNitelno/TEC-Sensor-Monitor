@@ -1,8 +1,39 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
+
+/// Central motion tokens — web uses instant transitions to avoid jank.
+abstract final class TekMotion {
+  static const themeSwitch = Duration.zero;
+
+  static const micro = Duration(milliseconds: 80);
+  static const microWeb = Duration.zero;
+
+  static Duration microDuration({required bool animate}) {
+    if (!animate) return Duration.zero;
+    return kIsWeb ? microWeb : micro;
+  }
+
+  static const chart = Duration(milliseconds: 200);
+  static const chartWeb = Duration.zero;
+
+  static Duration chartDuration({required bool animate}) {
+    if (!animate) return Duration.zero;
+    return kIsWeb ? chartWeb : chart;
+  }
+
+  static double chartAnimMs({required bool animate}) =>
+      chartDuration(animate: animate).inMilliseconds.toDouble();
+
+  /// Preload bundled fonts once at startup (avoids stalls on first paint).
+  static Future<void> preloadFonts() => GoogleFonts.pendingFonts([
+        GoogleFonts.manrope(),
+        GoogleFonts.sourceSans3(),
+      ]);
+}
 
 const _themeModeKey = 'tek_theme_mode';
 const _reduceMotionKey = 'tek_reduce_motion';
@@ -11,12 +42,6 @@ enum AppThemePreference {
   system,
   light,
   dark;
-
-  String get label => switch (this) {
-        AppThemePreference.system => 'Системная',
-        AppThemePreference.light => 'Светлая',
-        AppThemePreference.dark => 'Тёмная',
-      };
 
   IconData get icon => switch (this) {
         AppThemePreference.system => Icons.brightness_auto_outlined,
@@ -97,11 +122,19 @@ bool tekAnimationsEnabled(BuildContext context, WidgetRef ref) {
 }
 
 Duration tekAnimDuration(BuildContext context, WidgetRef ref, Duration normal) {
-  return tekAnimationsEnabled(context, ref) ? normal : Duration.zero;
+  if (!tekAnimationsEnabled(context, ref)) return Duration.zero;
+  if (kIsWeb) return Duration.zero;
+  return normal;
 }
 
 abstract final class AppTypography {
-  static TextTheme textTheme(Brightness brightness) {
+  static final TextTheme light = _build(Brightness.light);
+  static final TextTheme dark = _build(Brightness.dark);
+
+  static TextTheme forBrightness(Brightness brightness) =>
+      brightness == Brightness.dark ? dark : light;
+
+  static TextTheme _build(Brightness brightness) {
     final primary = brightness == Brightness.dark
         ? TekColors.darkTextPrimary
         : TekColors.lightTextPrimary;
@@ -174,8 +207,8 @@ abstract final class AppTypography {
 }
 
 abstract final class AppTheme {
-  static ThemeData dark() => _build(Brightness.dark);
-  static ThemeData light() => _build(Brightness.light);
+  static final ThemeData light = _build(Brightness.light);
+  static final ThemeData dark = _build(Brightness.dark);
 
   static ThemeData _build(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
@@ -191,7 +224,7 @@ abstract final class AppTheme {
         isDark ? TekColors.darkTextMuted : TekColors.lightTextMuted;
     final primary = isDark ? TekColors.primary : TekColors.primaryDark;
 
-    final accent = TekColors.secondary;
+    final accent = isDark ? TekColors.secondary : TekColors.secondaryLight;
 
     final colorScheme = (isDark ? ColorScheme.dark() : ColorScheme.light()).copyWith(
       primary: primary,
@@ -200,7 +233,7 @@ abstract final class AppTheme {
       onSecondary: isDark ? TekColors.darkBackground : TekColors.lightTextPrimary,
       secondaryContainer: isDark
           ? accent
-          : accent.withValues(alpha: 0.22),
+          : accent.withValues(alpha: 0.28),
       onSecondaryContainer: isDark ? Colors.white : TekColors.lightTextPrimary,
       error: TekColors.error,
       onError: Colors.white,
@@ -221,7 +254,7 @@ abstract final class AppTheme {
       brightness: brightness,
       scaffoldBackgroundColor: bg,
       colorScheme: colorScheme,
-      textTheme: AppTypography.textTheme(brightness),
+      textTheme: AppTypography.forBrightness(brightness),
       iconTheme: IconThemeData(color: onSurface),
       primaryIconTheme: IconThemeData(color: primary),
       appBarTheme: AppBarTheme(
@@ -476,7 +509,8 @@ abstract final class AppTheme {
         mainAxisMargin: 2,
         interactive: true,
       ),
-      splashFactory: InkSparkle.splashFactory,
+      splashFactory:
+          kIsWeb ? NoSplash.splashFactory : InkSparkle.splashFactory,
       hoverColor: primary.withValues(alpha: 0.06),
       focusColor: primary.withValues(alpha: 0.1),
       highlightColor: primary.withValues(alpha: 0.08),

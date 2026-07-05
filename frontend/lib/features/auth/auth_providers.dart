@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/api_client.dart';
 import 'package:tek_sensor_monitor/core/auth_storage.dart';
+import 'package:tek_sensor_monitor/core/jwt_utils.dart';
 import 'package:tek_sensor_monitor/models/auth_session.dart';
 import 'package:tek_sensor_monitor/models/notification.dart';
 import 'package:tek_sensor_monitor/models/user.dart';
@@ -14,7 +15,11 @@ class AuthNotifier extends AsyncNotifier<AuthSession?> {
   Future<AuthSession?> build() async {
     final storage = await ref.watch(authStorageProvider.future);
     final token = storage.token;
-    if (token == null) {
+    if (token == null || token.isEmpty) {
+      return null;
+    }
+    if (isJwtExpired(token)) {
+      await storage.clear();
       return null;
     }
     return AuthSession(
@@ -92,7 +97,10 @@ final rawApiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final auth = ref.watch(authProvider).valueOrNull;
-  return ApiClient(getToken: () => auth?.token);
+  return ApiClient(
+    getToken: () => auth?.token,
+    onUnauthorized: () => ref.read(authProvider.notifier).logout(),
+  );
 });
 
 final isAdminProvider = Provider<bool>((ref) {

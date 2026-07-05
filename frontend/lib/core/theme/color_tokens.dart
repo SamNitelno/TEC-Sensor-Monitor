@@ -22,6 +22,8 @@ abstract final class TekColors {
   static const primary = Color(0xFF00C9A7);
   static const primaryDark = Color(0xFF008F7A);
   static const secondary = Color(0xFFE8A838);
+  /// More saturated orange for light-theme controls (chips, accents).
+  static const secondaryLight = Color(0xFFE8740A);
   static const error = Color(0xFFF85149);
   static const success = Color(0xFF3FB950);
   static const live = Color(0xFF3FB950);

@@ -10,12 +10,15 @@ import 'package:tek_sensor_monitor/models/site.dart';
 import 'package:tek_sensor_monitor/models/user.dart';
 
 typedef TokenGetter = String? Function();
+typedef UnauthorizedHandler = void Function();
 
 class ApiClient {
   ApiClient({
     String? baseUrl,
     TokenGetter? getToken,
+    UnauthorizedHandler? onUnauthorized,
   })  : _getToken = getToken,
+        _onUnauthorized = onUnauthorized,
         _dio = Dio(
           BaseOptions(
             baseUrl: baseUrl ?? defaultApiBaseUrl,
@@ -33,12 +36,24 @@ class ApiClient {
           }
           handler.next(options);
         },
+        onError: (error, handler) {
+          if (error.response?.statusCode == 401) {
+            final path = error.requestOptions.path;
+            final isAuthAttempt = path.contains('/auth/login') ||
+                path.contains('/auth/register');
+            if (!isAuthAttempt) {
+              _onUnauthorized?.call();
+            }
+          }
+          handler.next(error);
+        },
       ),
     );
   }
 
   final Dio _dio;
   final TokenGetter? _getToken;
+  final UnauthorizedHandler? _onUnauthorized;
 
   Future<AuthSession> login(String login, String password) async {
     final response = await _dio.post<Map<String, dynamic>>(

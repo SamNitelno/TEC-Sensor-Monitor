@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/core/local_notifications.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/notifications/notifications_providers.dart';
@@ -25,7 +26,6 @@ class _RoleNotificationPollerState extends ConsumerState<RoleNotificationPoller>
   @override
   void initState() {
     super.initState();
-    LocalNotifications.init();
     _timer = Timer.periodic(const Duration(seconds: 10), (_) => _poll());
     Future.microtask(_poll);
   }
@@ -37,6 +37,7 @@ class _RoleNotificationPollerState extends ConsumerState<RoleNotificationPoller>
   }
 
   Future<void> _poll() async {
+    if (!mounted) return;
     final session = ref.read(authProvider).valueOrNull;
     if (session == null) return;
 
@@ -60,11 +61,12 @@ class _RoleNotificationPollerState extends ConsumerState<RoleNotificationPoller>
   }
 
   Future<void> _present(AppNotification item) async {
+    final l10n = context.l10n;
     final granted = await LocalNotifications.ensurePermission();
     if (granted) {
       await LocalNotifications.show(
         id: item.id,
-        title: 'ТЭК · Мониторинг',
+        title: l10n.appTitleShort,
         body: item.message,
       );
       return;
@@ -83,18 +85,16 @@ class _RoleNotificationPollerState extends ConsumerState<RoleNotificationPoller>
 
   Future<void> _showPermissionDialog() async {
     if (!mounted) return;
+    final l10n = context.l10n;
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Уведомления отключены'),
-        content: const Text(
-          'Чтобы получать сообщения о повышении и понижении прав, '
-          'разрешите уведомления в настройках системы или браузера.',
-        ),
+        title: Text(l10n.notificationsDisabledTitle),
+        content: Text(l10n.notificationsDisabledBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Позже'),
+            child: Text(l10n.later),
           ),
           FilledButton(
             onPressed: () async {
@@ -106,7 +106,7 @@ class _RoleNotificationPollerState extends ConsumerState<RoleNotificationPoller>
                 await LocalNotifications.openSystemSettings();
               }
             },
-            child: const Text('Разрешить'),
+            child: Text(l10n.allow),
           ),
         ],
       ),
