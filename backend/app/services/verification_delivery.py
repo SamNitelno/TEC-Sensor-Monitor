@@ -34,7 +34,7 @@ def normalize_phone(value: str) -> str:
     if len(digits) == 10:
         digits = "7" + digits
     if not digits.startswith("7") or len(digits) != 11:
-        raise ValueError("Phone must be a Russian number, e.g. +79135466546")
+        raise ValueError("Phone must be a Russian number, e.g. +79001234567")
     return f"+{digits}"
 
 

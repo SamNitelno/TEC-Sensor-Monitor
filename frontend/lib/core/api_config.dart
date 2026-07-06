@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 /// API base URL. Override at build/run time:
-/// `flutter run --dart-define=API_BASE_URL=https://192.168.0.181`
+/// `flutter run --dart-define=API_BASE_URL=https://192.168.1.100`
 const String _defaultApiBaseUrl = 'http://localhost:8000';
 
 const String apiBaseUrl = String.fromEnvironment(
@@ -13,7 +13,7 @@ const String apiBaseUrl = String.fromEnvironment(
 const String androidEmulatorApiBaseUrl = 'http://10.0.2.2:8000';
 
 /// Placeholder shown in server URL input fields.
-const String apiBaseUrlPlaceholder = 'https://192.168.0.181';
+const String apiBaseUrlPlaceholder = 'https://192.168.1.100';
 
 bool isPrivateLanHost(String host) {
   if (host == 'localhost' || host == '10.0.2.2' || host == '127.0.0.1') {

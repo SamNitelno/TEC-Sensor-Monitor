@@ -293,7 +293,9 @@ docker compose -f docker-compose.prod.yml --profile mqtt up -d
 
 ## Клиенты по платформам
 
-Общее правило: URL API задаётся через `--dart-define=API_BASE_URL=...` при `flutter run` / `flutter build`.
+Адрес сервера задаётся **в приложении**: **Настройки → Адрес сервера** (сохраняется на устройстве). Один раз ввёл — приложение помнит; при смене сети или IP просто меняешь адрес в настройках, пересобирать не нужно.
+
+Приоритет источников: сохранённый в настройках адрес → `--dart-define=API_BASE_URL=...` (опциональный дефолт для сборки) → платформенный дефолт (`http://localhost:8000`, для Android-эмулятора `http://10.0.2.2:8000`). То есть `--dart-define` в командах ниже необязателен — он лишь задаёт значение по умолчанию, которое можно переопределить в настройках.
 
 | Режим | API URL | WebSocket |
 |-------|---------|-----------|
@@ -309,7 +311,8 @@ docker compose -f docker-compose.prod.yml --profile mqtt up -d
 
 ```powershell
 cd frontend
-flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
+flutter run -d chrome
+# по умолчанию http://localhost:8000; другой адрес — в Настройках приложения
 ```
 
 **Production** — статика через nginx, API same-origin (`https://<LAN-IP>/api/v1`).
@@ -338,10 +341,12 @@ flutter run -d windows
 **Release-сборка** (на целевой ОС):
 
 ```powershell
-flutter build windows --dart-define=API_BASE_URL=https://192.168.1.100
-flutter build macos   --dart-define=API_BASE_URL=https://192.168.1.100
-flutter build linux   --dart-define=API_BASE_URL=https://192.168.1.100
+flutter build windows
+# flutter build macos
+# flutter build linux
 ```
+
+Адрес сервера вводится в приложении (**Настройки → Адрес сервера**) при первом запуске — пересобирать под конкретную сеть не нужно. Чтобы зашить дефолтный адрес прямо в сборку, добавь `--dart-define=API_BASE_URL=https://192.168.1.100`.
 
 Артефакты:
 
@@ -376,7 +381,7 @@ flutter run -d <emulator_id>
 # URL по умолчанию для Android: http://10.0.2.2:8000
 ```
 
-Явный override:
+Другой адрес — в **Настройках** приложения, либо явным override при запуске:
 
 ```powershell
 flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8000
@@ -384,10 +389,11 @@ flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8000
 
 #### Физический телефон (Wi‑Fi)
 
-Телефон и сервер в одной LAN:
+Телефон и сервер в одной LAN. Запусти обычную сборку и укажи LAN-адрес сервера (`https://<LAN-IP>`) в **Настройках** приложения:
 
 ```powershell
-flutter run --dart-define=API_BASE_URL=https://192.168.1.100
+flutter run
+# адрес сервера → Настройки приложения; либо зашить дефолт: --dart-define=API_BASE_URL=https://192.168.1.100
 ```
 
 **Prod:** установите mkcert CA на телефон (Android → Настройки → Безопасность → Установить сертификат).
@@ -395,10 +401,10 @@ flutter run --dart-define=API_BASE_URL=https://192.168.1.100
 #### Release APK
 
 ```powershell
-flutter build apk --release --dart-define=API_BASE_URL=https://192.168.1.100
+flutter build apk --release
 ```
 
-APK: `frontend/build/app/outputs/flutter-apk/app-release.apk`
+APK: `frontend/build/app/outputs/flutter-apk/app-release.apk`. Адрес сервера задаётся в **Настройках** приложения при первом запуске (на физическом телефоне — LAN-IP сервера, `https://<LAN-IP>`). Опционально зашить дефолт: `--dart-define=API_BASE_URL=https://192.168.1.100`.
 
 | Функция | Android |
 |---------|---------|
@@ -600,6 +606,7 @@ flutter test test/dashboard_alerts_bar_test.dart
 |---------|---------|
 | ESP не online | Проверьте Wi‑Fi, ingest URL (`http://`, не `https://`), `X-Device-Token`, LAN-доступность порта 80 |
 | `Invalid device token` | Токен не совпадает с БД → ротация или повторная BLE с актуальным токеном |
+| Клиент не видит сервер (desktop/Android) | Проверьте **Настройки → Адрес сервера**: в prod `https://<LAN-IP>` (без `:8000`), клиент и сервер в одной LAN |
 | Android/Windows не подключается к HTTPS | Установите mkcert CA; self-signed без CA не работает |
 | BLE не находит ESP | ESP прошит `esp32dev_jsy`, Bluetooth включён, расстояние < 5 м |
 | BLE в браузере | Недоступен by design — desktop или Android |

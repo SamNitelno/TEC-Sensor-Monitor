@@ -16,3 +16,27 @@ firmware/.pio/
 infra/tls/*.key
 infra/tls/*.crt
 !infra/tls/.gitkeep
+
+# logs & debug artifacts
+*.log
+debug-*.log
+
+# env variants (реальные значения — только локально)
+.env*
+!.env.example
+
+# certs / keystores
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# IDE / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# coverage
+coverage/
+*.lcov
