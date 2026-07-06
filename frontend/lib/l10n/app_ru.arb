@@ -425,6 +425,17 @@
   "themeLight": "Светлая",
   "themeDark": "Тёмная",
   "hexColorFormat": "Формат: #RRGGBB",
+  "serverUrlLabel": "Адрес сервера",
+  "serverUrlHelper": "URL API-сервера (http или https, с портом при необходимости)",
+  "saveServerUrl": "Сохранить адрес",
+  "serverUrlSaved": "Адрес сервера сохранён",
+  "errorInvalidServerUrl": "Укажите корректный URL (http:// или https://)",
+  "errorNoConnectionTo": "Нет связи с сервером {url}",
+  "@errorNoConnectionTo": {
+    "placeholders": {
+      "url": {"type": "String"}
+    }
+  },
   "errorNoConnection": "Нет связи с сервером",
   "errorAuthRequired": "Требуется вход",
   "errorForbidden": "Недостаточно прав",

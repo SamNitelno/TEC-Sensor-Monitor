@@ -58,7 +58,13 @@ class RouterNotifier extends ChangeNotifier {
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = RouterNotifier(ref);
-  ref.listen(authProvider, (_, __) => notifier.refresh());
+  ref.listen(authProvider, (previous, next) {
+    final prevSession = previous?.valueOrNull;
+    final nextSession = next.valueOrNull;
+    if (prevSession != nextSession) {
+      notifier.refresh();
+    }
+  });
   ref.onDispose(notifier.dispose);
 
   return GoRouter(

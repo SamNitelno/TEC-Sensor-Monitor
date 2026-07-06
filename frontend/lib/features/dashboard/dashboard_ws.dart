@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/api_config.dart';
+import 'package:tek_sensor_monitor/core/api_url_provider.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_state.dart';
@@ -79,7 +80,9 @@ class DashboardWsService {
     }
 
     disconnect();
-    final url = buildWebSocketUrl(token);
+    final baseUrl = _ref.read(apiBaseUrlProvider).valueOrNull;
+    if (baseUrl == null) return;
+    final url = buildWebSocketUrl(token, baseUrl);
     _channel = WebSocketChannel.connect(Uri.parse(url));
     _subscription = _channel!.stream.listen(
       _onMessage,
@@ -195,6 +198,13 @@ final dashboardWsServiceProvider = Provider<DashboardWsService>((ref) {
     } else {
       service.disconnect();
       ref.read(liveReadingsProvider.notifier).clear();
+    }
+  });
+  ref.listen(apiBaseUrlProvider, (previous, next) {
+    if (ref.read(authProvider).valueOrNull?.token != null &&
+        next.valueOrNull != null) {
+      service.disconnect();
+      service.connect();
     }
   });
   if (ref.read(authProvider).valueOrNull?.token != null) {

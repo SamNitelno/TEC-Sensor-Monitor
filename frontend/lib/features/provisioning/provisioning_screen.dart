@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/api_config.dart';
+import 'package:tek_sensor_monitor/core/api_url_provider.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/dashboard/dashboard_providers.dart';
 import 'package:tek_sensor_monitor/features/provisioning/ble_constants.dart';
@@ -39,14 +40,22 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
   Timer? _pollTimer;
   int _pollAttempts = 0;
   StreamSubscription<List<ScanResult>>? _scanSubscription;
+  bool _serverUrlInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _serverUrlController.text = '${defaultApiBaseUrl.replaceAll(RegExp(r'/$'), '')}/api/v1/ingest';
     if (isBleProvisioningSupported) {
       _startScan();
     }
+  }
+
+  void _initServerUrlFromProvider() {
+    if (_serverUrlInitialized) return;
+    final baseUrl = ref.read(apiBaseUrlProvider).valueOrNull ?? defaultApiBaseUrl;
+    _serverUrlController.text =
+        '${baseUrl.replaceAll(RegExp(r'/$'), '')}/api/v1/ingest';
+    _serverUrlInitialized = true;
   }
 
   @override
@@ -211,6 +220,8 @@ class _ProvisioningScreenState extends ConsumerState<ProvisioningScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    ref.watch(apiBaseUrlProvider);
+    _initServerUrlFromProvider();
     if (!isBleProvisioningSupported) {
       return Scaffold(
         appBar: AppBar(title: Text(l10n.provisioningTitle)),

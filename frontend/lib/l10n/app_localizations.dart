@@ -1598,6 +1598,42 @@ abstract class AppLocalizations {
   /// **'Формат: #RRGGBB'**
   String get hexColorFormat;
 
+  /// No description provided for @serverUrlLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адрес сервера'**
+  String get serverUrlLabel;
+
+  /// No description provided for @serverUrlHelper.
+  ///
+  /// In ru, this message translates to:
+  /// **'URL API-сервера (http или https, с портом при необходимости)'**
+  String get serverUrlHelper;
+
+  /// No description provided for @saveServerUrl.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить адрес'**
+  String get saveServerUrl;
+
+  /// No description provided for @serverUrlSaved.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адрес сервера сохранён'**
+  String get serverUrlSaved;
+
+  /// No description provided for @errorInvalidServerUrl.
+  ///
+  /// In ru, this message translates to:
+  /// **'Укажите корректный URL (http:// или https://)'**
+  String get errorInvalidServerUrl;
+
+  /// No description provided for @errorNoConnectionTo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет связи с сервером {url}'**
+  String errorNoConnectionTo(String url);
+
   /// No description provided for @errorNoConnection.
   ///
   /// In ru, this message translates to:
