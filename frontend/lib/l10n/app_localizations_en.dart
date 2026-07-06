@@ -210,6 +210,66 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signIn => 'Sign in';
 
   @override
+  String get forgotPassword => 'Forgot password?';
+
+  @override
+  String get forgotPasswordTitle => 'Password reset';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Enter the email or phone linked to your account';
+
+  @override
+  String get sendResetCode => 'Send code';
+
+  @override
+  String get resetPasswordTitle => 'New password';
+
+  @override
+  String get resetPasswordButton => 'Save password';
+
+  @override
+  String get passwordResetSuccess =>
+      'Password changed. Sign in with your new password.';
+
+  @override
+  String get resetCodeSent =>
+      'If the contact is linked to an account, a code was sent';
+
+  @override
+  String get adminResetPassword => 'Reset password';
+
+  @override
+  String adminResetPasswordTitle(String login) {
+    return 'New password for $login';
+  }
+
+  @override
+  String get adminPasswordResetSuccess => 'User password updated';
+
+  @override
+  String get errorFeatureInDevelopment =>
+      'This feature is under development. We apologize for the inconvenience.';
+
+  @override
+  String get errorRateLimited =>
+      'Too many attempts. Please wait and try again.';
+
+  @override
+  String get errorVerificationCodeInvalid =>
+      'Invalid or expired verification code';
+
+  @override
+  String get errorDeliveryFailed =>
+      'Could not send the code. Contact your administrator.';
+
+  @override
+  String get errorEmailTaken => 'This email is already in use';
+
+  @override
+  String get errorPhoneTaken => 'This phone number is already in use';
+
+  @override
   String get noAccountRegister => 'No account? Register';
 
   @override
@@ -219,6 +279,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorInvalidCredentials => 'Invalid login or password';
+
+  @override
+  String get errorRegistrationDisabled =>
+      'Registration is disabled by the administrator';
+
+  @override
+  String get registrationDisabled =>
+      'New user registration is disabled. Contact your administrator.';
 
   @override
   String get errorWrongCurrentPassword => 'Current password is incorrect';

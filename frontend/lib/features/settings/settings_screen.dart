@@ -6,6 +6,8 @@ import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/core/locale/locale_provider.dart';
 import 'package:tek_sensor_monitor/core/password_validation.dart';
 import 'package:tek_sensor_monitor/core/theme/app_theme.dart';
+import 'package:tek_sensor_monitor/core/router.dart';
+import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/features/settings/contact_verification_dialog.dart';
 import 'package:tek_sensor_monitor/models/notification.dart';
@@ -30,6 +32,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _savingProfile = false;
   bool _savingPassword = false;
   bool _initialized = false;
+  String? _passwordChangeSuccess;
 
   @override
   void dispose() {
@@ -113,7 +116,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return;
     }
 
-    setState(() => _savingPassword = true);
+    setState(() {
+      _savingPassword = true;
+      _passwordChangeSuccess = null;
+    });
     try {
       await ref.read(apiClientProvider).changePassword(
             currentPassword: _currentPasswordController.text,
@@ -123,7 +129,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _newPasswordController.clear();
       _confirmPasswordController.clear();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        setState(() => _passwordChangeSuccess = l10n.passwordChanged);
+        rootScaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(content: Text(l10n.passwordChanged)),
         );
       }
@@ -175,7 +182,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       controller: _emailController,
                       decoration: InputDecoration(
                         labelText: l10n.emailLabel,
-                        helperText: l10n.emailChangeHelper,
                       ),
                       keyboardType: TextInputType.emailAddress,
                     ),
@@ -184,7 +190,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       controller: _phoneController,
                       decoration: InputDecoration(
                         labelText: l10n.phoneLabel,
-                        helperText: l10n.phoneChangeHelper,
                       ),
                       keyboardType: TextInputType.phone,
                     ),
@@ -215,13 +220,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       Text(l10n.changePasswordTitle,
                           style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 8),
-                      Text(
-                        l10n.passwordHelper,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      if (_passwordChangeSuccess != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: TekColors.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: TekColors.success.withValues(alpha: 0.4),
                             ),
-                      ),
+                          ),
+                          child: Text(
+                            _passwordChangeSuccess!,
+                            style: const TextStyle(color: TekColors.success),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _currentPasswordController,

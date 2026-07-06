@@ -74,6 +74,9 @@ async def _validate_pending_values(
     pending_phone = None
     if payload.phone is not None and not payload.clear_phone:
         pending_phone = normalize_phone(payload.phone)
+        existing = await user_repository.get_by_phone(session, pending_phone)
+        if existing is not None and existing.id != user.id:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Phone already taken")
 
     return pending_login, pending_email, pending_phone
 
@@ -114,6 +117,15 @@ async def send_contact_codes(
     user: User,
     payload: ContactSendCodesRequest,
 ) -> ContactSendCodesResponse:
+    from app.api.public_access import FEATURE_IN_DEVELOPMENT
+    from app.services.verification_delivery import verification_delivery_ready
+
+    if not verification_delivery_ready():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=FEATURE_IN_DEVELOPMENT,
+        )
+
     pending_login, pending_email, pending_phone = await _validate_pending_values(
         session, user, payload
     )

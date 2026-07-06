@@ -1,9 +1,10 @@
 import re
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User, UserRole
+from app.services.verification_delivery import normalize_email, normalize_phone
 
 _HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
@@ -27,7 +28,16 @@ async def get_by_login(session: AsyncSession, login: str) -> User | None:
 
 
 async def get_by_email(session: AsyncSession, email: str) -> User | None:
-    result = await session.execute(select(User).where(User.email == email))
+    normalized = normalize_email(email)
+    result = await session.execute(
+        select(User).where(func.lower(User.email) == normalized)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_by_phone(session: AsyncSession, phone: str) -> User | None:
+    normalized = normalize_phone(phone)
+    result = await session.execute(select(User).where(User.phone == normalized))
     return result.scalar_one_or_none()
 
 
@@ -80,7 +90,7 @@ async def update_profile(
     if clear_email:
         user.email = None
     elif email is not None:
-        user.email = email
+        user.email = normalize_email(email)
     if clear_phone:
         user.phone = None
     elif phone is not None:

@@ -2,9 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/api_client.dart';
 import 'package:tek_sensor_monitor/core/auth_storage.dart';
 import 'package:tek_sensor_monitor/core/jwt_utils.dart';
+import 'package:tek_sensor_monitor/models/auth_capabilities.dart';
 import 'package:tek_sensor_monitor/models/auth_session.dart';
 import 'package:tek_sensor_monitor/models/notification.dart';
 import 'package:tek_sensor_monitor/models/user.dart';
+
+/// True after the first auth session restore completes (cold start).
+final authBootstrappedProvider = StateProvider<bool>((ref) => false);
 
 final authStorageProvider = FutureProvider<AuthStorage>((ref) async {
   return AuthStorage.create();
@@ -40,7 +44,6 @@ class AuthNotifier extends AsyncNotifier<AuthSession?> {
   }
 
   Future<void> login(String login, String password) async {
-    state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final client = ref.read(rawApiClientProvider);
       final session = await client.login(login, password);
@@ -50,7 +53,6 @@ class AuthNotifier extends AsyncNotifier<AuthSession?> {
   }
 
   Future<void> register(String login, String password) async {
-    state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final client = ref.read(rawApiClientProvider);
       final session = await client.register(login, password);
@@ -116,4 +118,8 @@ final profileProvider = FutureProvider<UserProfile>((ref) async {
 final usersProvider = FutureProvider<List<UserListItem>>((ref) async {
   final client = ref.watch(apiClientProvider);
   return client.fetchUsers();
+});
+
+final authCapabilitiesProvider = FutureProvider<AuthCapabilities>((ref) async {
+  return ref.read(rawApiClientProvider).fetchAuthCapabilities();
 });

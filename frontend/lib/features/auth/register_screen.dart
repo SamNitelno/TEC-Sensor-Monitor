@@ -26,6 +26,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscure = true;
   bool? _loginAvailable;
   bool _checkingLogin = false;
+  bool _isSubmitting = false;
+  String? _errorMessage;
   Timer? _debounce;
 
   @override
@@ -72,27 +74,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final login = _loginController.text.trim();
     final password = _passwordController.text;
     if (_loginAvailable == false) {
-      _showError(l10n.loginAlreadyTaken);
+      setState(() => _errorMessage = l10n.loginAlreadyTaken);
       return;
     }
 
-    await ref.read(authProvider.notifier).register(login, password);
-    if (!mounted) return;
-    final authState = ref.read(authProvider);
-    if (authState.hasError) {
-      _showError(friendlyApiError(authState.error!, l10n));
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+    try {
+      await ref.read(authProvider.notifier).register(login, password);
+      if (!mounted) return;
+      final authState = ref.read(authProvider);
+      if (authState.hasError) {
+        setState(() {
+          _errorMessage = friendlyApiError(authState.error!, l10n);
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
     final l10n = context.l10n;
 
     String? loginHelper;
@@ -113,6 +120,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_errorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: TekColors.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: TekColors.error.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             TextFormField(
               controller: _loginController,
               decoration: InputDecoration(
@@ -126,6 +148,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
               onChanged: (value) => _scheduleLoginCheck(value.trim()),
               textInputAction: TextInputAction.next,
+              enabled: !_isSubmitting,
               validator: (value) {
                 final login = value?.trim() ?? '';
                 if (login.length < 3) {
@@ -149,6 +172,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
               ),
               obscureText: _obscure,
+              enabled: !_isSubmitting,
               validator: (value) => validatePassword(value ?? '', l10n),
             ),
             const SizedBox(height: 12),
@@ -158,6 +182,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 labelText: l10n.confirmPasswordLabel,
               ),
               obscureText: _obscure,
+              enabled: !_isSubmitting,
               validator: (value) {
                 if (value != _passwordController.text) {
                   return l10n.passwordsDoNotMatch;
@@ -166,18 +191,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               },
               onFieldSubmitted: (_) => _submit(),
             ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: auth.isLoading ? null : _submit,
-            child: auth.isLoading
-                ? const TekLoadingIndicator(size: 24, compact: true)
-                : Text(l10n.registerButton),
-          ),
-        ],
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: _isSubmitting ? null : _submit,
+              child: _isSubmitting
+                  ? const TekLoadingIndicator(size: 24, compact: true)
+                  : Text(l10n.registerButton),
+            ),
+          ],
         ),
       ),
       footer: TextButton(
-        onPressed: () => context.go('/login'),
+        onPressed: _isSubmitting ? null : () => context.go('/login'),
         child: Text(l10n.hasAccountLogin),
       ),
     );

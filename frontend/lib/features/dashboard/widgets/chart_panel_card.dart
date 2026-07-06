@@ -19,6 +19,8 @@ import 'package:tek_sensor_monitor/widgets/tek_interactive.dart';
 import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
 
 class ChartPanelCard extends ConsumerWidget {
+  static const _minChartAreaHeight = 260.0;
+
   const ChartPanelCard({
     super.key,
     required this.panelId,
@@ -160,19 +162,24 @@ class ChartPanelCard extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Expanded(
-              child: _buildChartArea(
-                ref: ref,
-                theme: theme,
-                l10n: l10n,
-                readingsAsync: readingsAsync,
-                cachedReadings: cachedReadings,
-                panel: panel,
-                range: range,
-                workshops: workshops,
-                sites: sites,
-                sensors: sensors,
-                downtimeEvents:
-                    downtimeEventsAsync.valueOrNull ?? const [],
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: _minChartAreaHeight,
+                ),
+                child: _buildChartArea(
+                  ref: ref,
+                  theme: theme,
+                  l10n: l10n,
+                  readingsAsync: readingsAsync,
+                  cachedReadings: cachedReadings,
+                  panel: panel,
+                  range: range,
+                  workshops: workshops,
+                  sites: sites,
+                  sensors: sensors,
+                  downtimeEvents:
+                      downtimeEventsAsync.valueOrNull ?? const [],
+                ),
               ),
             ),
           ],

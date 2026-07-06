@@ -40,8 +40,16 @@ class TekSensorMonitorApp extends ConsumerWidget {
     final themePreference = ref.watch(themePreferenceProvider);
     final language = ref.watch(languagePreferenceProvider);
     final auth = ref.watch(authProvider);
+    final bootstrapped = ref.watch(authBootstrappedProvider);
+
+    ref.listen(authProvider, (previous, next) {
+      if (!next.isLoading) {
+        ref.read(authBootstrappedProvider.notifier).state = true;
+      }
+    });
 
     return MaterialApp.router(
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       title: language == AppLanguage.russian
           ? 'ТЭК · Мониторинг датчиков'
           : 'TEK · Sensor monitoring',
@@ -73,7 +81,7 @@ class TekSensorMonitorApp extends ConsumerWidget {
                 brightness == Brightness.dark ? Brightness.light : Brightness.dark,
           ),
         );
-        final content = auth.isLoading
+        final content = auth.isLoading && !bootstrapped
             ? Scaffold(
                 body: TekPageLoading(
                   message: AppLocalizations.of(context).initializing,

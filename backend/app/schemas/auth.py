@@ -29,6 +29,11 @@ class LoginAvailabilityResponse(BaseModel):
     available: bool
 
 
+class AuthCapabilitiesResponse(BaseModel):
+    public_registration: bool
+    password_reset: bool
+
+
 class UserProfile(BaseModel):
     id: int
     login: str
@@ -85,6 +90,35 @@ class ContactVerifyCodeResponse(BaseModel):
 class PasswordChangeRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordResetRequest(BaseModel):
+    email: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=32)
+
+
+class PasswordResetRequestResponse(BaseModel):
+    batch_id: str
+    destination_masked: str
+    message: str
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    batch_id: str
+    code: str = Field(min_length=4, max_length=8)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordResetConfirmResponse(BaseModel):
+    message: str
+
+
+class AdminPasswordResetRequest(BaseModel):
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class AdminPasswordResetResponse(BaseModel):
+    message: str = "Password reset by administrator"
 
 
 class UserListItem(BaseModel):
