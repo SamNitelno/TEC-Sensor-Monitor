@@ -211,6 +211,63 @@ class AppLocalizationsRu extends AppLocalizations {
   String get signIn => 'Войти';
 
   @override
+  String get forgotPassword => 'Забыли пароль?';
+
+  @override
+  String get forgotPasswordTitle => 'Сброс пароля';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Укажите email или телефон, привязанный к аккаунту';
+
+  @override
+  String get sendResetCode => 'Отправить код';
+
+  @override
+  String get resetPasswordTitle => 'Новый пароль';
+
+  @override
+  String get resetPasswordButton => 'Сохранить пароль';
+
+  @override
+  String get passwordResetSuccess => 'Пароль изменён. Войдите с новым паролем.';
+
+  @override
+  String get resetCodeSent => 'Если контакт привязан к аккаунту, код отправлен';
+
+  @override
+  String get adminResetPassword => 'Сбросить пароль';
+
+  @override
+  String adminResetPasswordTitle(String login) {
+    return 'Новый пароль для $login';
+  }
+
+  @override
+  String get adminPasswordResetSuccess => 'Пароль пользователя обновлён';
+
+  @override
+  String get errorFeatureInDevelopment =>
+      'Функция в разработке, приносим извинения';
+
+  @override
+  String get errorRateLimited =>
+      'Слишком много попыток. Подождите и повторите.';
+
+  @override
+  String get errorVerificationCodeInvalid => 'Неверный или просроченный код';
+
+  @override
+  String get errorDeliveryFailed =>
+      'Не удалось отправить код. Обратитесь к администратору.';
+
+  @override
+  String get errorEmailTaken => 'Этот email уже используется';
+
+  @override
+  String get errorPhoneTaken => 'Этот телефон уже используется';
+
+  @override
   String get noAccountRegister => 'Нет аккаунта? Зарегистрироваться';
 
   @override
@@ -220,6 +277,14 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get errorInvalidCredentials => 'Неверный логин или пароль';
+
+  @override
+  String get errorRegistrationDisabled =>
+      'Регистрация отключена администратором';
+
+  @override
+  String get registrationDisabled =>
+      'Регистрация новых пользователей отключена. Обратитесь к администратору.';
 
   @override
   String get errorWrongCurrentPassword => 'Неверный текущий пароль';

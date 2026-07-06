@@ -482,6 +482,108 @@ abstract class AppLocalizations {
   /// **'Войти'**
   String get signIn;
 
+  /// No description provided for @forgotPassword.
+  ///
+  /// In ru, this message translates to:
+  /// **'Забыли пароль?'**
+  String get forgotPassword;
+
+  /// No description provided for @forgotPasswordTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сброс пароля'**
+  String get forgotPasswordTitle;
+
+  /// No description provided for @forgotPasswordSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Укажите email или телефон, привязанный к аккаунту'**
+  String get forgotPasswordSubtitle;
+
+  /// No description provided for @sendResetCode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправить код'**
+  String get sendResetCode;
+
+  /// No description provided for @resetPasswordTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новый пароль'**
+  String get resetPasswordTitle;
+
+  /// No description provided for @resetPasswordButton.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить пароль'**
+  String get resetPasswordButton;
+
+  /// No description provided for @passwordResetSuccess.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пароль изменён. Войдите с новым паролем.'**
+  String get passwordResetSuccess;
+
+  /// No description provided for @resetCodeSent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Если контакт привязан к аккаунту, код отправлен'**
+  String get resetCodeSent;
+
+  /// No description provided for @adminResetPassword.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить пароль'**
+  String get adminResetPassword;
+
+  /// No description provided for @adminResetPasswordTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новый пароль для {login}'**
+  String adminResetPasswordTitle(String login);
+
+  /// No description provided for @adminPasswordResetSuccess.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пароль пользователя обновлён'**
+  String get adminPasswordResetSuccess;
+
+  /// No description provided for @errorFeatureInDevelopment.
+  ///
+  /// In ru, this message translates to:
+  /// **'Функция в разработке, приносим извинения'**
+  String get errorFeatureInDevelopment;
+
+  /// No description provided for @errorRateLimited.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слишком много попыток. Подождите и повторите.'**
+  String get errorRateLimited;
+
+  /// No description provided for @errorVerificationCodeInvalid.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неверный или просроченный код'**
+  String get errorVerificationCodeInvalid;
+
+  /// No description provided for @errorDeliveryFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось отправить код. Обратитесь к администратору.'**
+  String get errorDeliveryFailed;
+
+  /// No description provided for @errorEmailTaken.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот email уже используется'**
+  String get errorEmailTaken;
+
+  /// No description provided for @errorPhoneTaken.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот телефон уже используется'**
+  String get errorPhoneTaken;
+
   /// No description provided for @noAccountRegister.
   ///
   /// In ru, this message translates to:
@@ -499,6 +601,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Неверный логин или пароль'**
   String get errorInvalidCredentials;
+
+  /// No description provided for @errorRegistrationDisabled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Регистрация отключена администратором'**
+  String get errorRegistrationDisabled;
+
+  /// No description provided for @registrationDisabled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Регистрация новых пользователей отключена. Обратитесь к администратору.'**
+  String get registrationDisabled;
 
   /// No description provided for @errorWrongCurrentPassword.
   ///

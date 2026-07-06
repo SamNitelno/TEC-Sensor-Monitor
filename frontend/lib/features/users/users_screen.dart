@@ -240,6 +240,62 @@ class _UserActionsState extends ConsumerState<_UserActions> {
     }
   }
 
+  Future<void> _resetPassword() async {
+    final l10n = context.l10n;
+    final controller = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.adminResetPasswordTitle(widget.user.login)),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: l10n.newPasswordLabel,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || controller.text.isEmpty) {
+      controller.dispose();
+      return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      await ref.read(apiClientProvider).adminResetUserPassword(
+            userId: widget.user.id,
+            newPassword: controller.text,
+          );
+      widget.onChanged();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.adminPasswordResetSuccess)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
+        );
+      }
+    } finally {
+      controller.dispose();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _demote() async {
     final l10n = context.l10n;
     setState(() => _busy = true);
@@ -277,18 +333,23 @@ class _UserActionsState extends ConsumerState<_UserActions> {
       return Chip(label: Text(l10n.youChip));
     }
 
-    if (widget.user.isAdmin) {
-      return IconButton(
-        tooltip: l10n.demoteToViewer,
-        icon: const Icon(Icons.arrow_downward),
-        onPressed: _demote,
-      );
-    }
-
-    return IconButton(
-      tooltip: l10n.promoteToAdmin,
-      icon: const Icon(Icons.arrow_upward),
-      onPressed: _promote,
+    return PopupMenuButton<String>(
+      onSelected: (action) {
+        if (action == 'promote') {
+          _promote();
+        } else if (action == 'demote') {
+          _demote();
+        } else if (action == 'reset') {
+          _resetPassword();
+        }
+      },
+      itemBuilder: (context) => [
+        if (!widget.user.isAdmin)
+          PopupMenuItem(value: 'promote', child: Text(l10n.promoteToAdmin))
+        else
+          PopupMenuItem(value: 'demote', child: Text(l10n.demoteToViewer)),
+        PopupMenuItem(value: 'reset', child: Text(l10n.adminResetPassword)),
+      ],
     );
   }
 }

@@ -70,9 +70,33 @@
   "loginLabel": "Логин",
   "passwordLabel": "Пароль",
   "signIn": "Войти",
+  "forgotPassword": "Забыли пароль?",
+  "forgotPasswordTitle": "Сброс пароля",
+  "forgotPasswordSubtitle": "Укажите email или телефон, привязанный к аккаунту",
+  "sendResetCode": "Отправить код",
+  "resetPasswordTitle": "Новый пароль",
+  "resetPasswordButton": "Сохранить пароль",
+  "passwordResetSuccess": "Пароль изменён. Войдите с новым паролем.",
+  "resetCodeSent": "Если контакт привязан к аккаунту, код отправлен",
+  "adminResetPassword": "Сбросить пароль",
+  "adminResetPasswordTitle": "Новый пароль для {login}",
+  "@adminResetPasswordTitle": {
+    "placeholders": {
+      "login": {"type": "String"}
+    }
+  },
+  "adminPasswordResetSuccess": "Пароль пользователя обновлён",
+  "errorFeatureInDevelopment": "Функция в разработке, приносим извинения",
+  "errorRateLimited": "Слишком много попыток. Подождите и повторите.",
+  "errorVerificationCodeInvalid": "Неверный или просроченный код",
+  "errorDeliveryFailed": "Не удалось отправить код. Обратитесь к администратору.",
+  "errorEmailTaken": "Этот email уже используется",
+  "errorPhoneTaken": "Этот телефон уже используется",
   "noAccountRegister": "Нет аккаунта? Зарегистрироваться",
   "loginError": "Ошибка входа: {error}",
   "errorInvalidCredentials": "Неверный логин или пароль",
+  "errorRegistrationDisabled": "Регистрация отключена администратором",
+  "registrationDisabled": "Регистрация новых пользователей отключена. Обратитесь к администратору.",
   "errorWrongCurrentPassword": "Неверный текущий пароль",
   "errorPasswordRequired": "Введите пароль",
   "@loginError": {

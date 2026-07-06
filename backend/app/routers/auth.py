@@ -7,12 +7,17 @@ from app.api.deps import get_current_user
 from app.api.public_access import (
     ensure_contact_verification_enabled,
     ensure_public_registration_enabled,
+    ensure_verification_features_enabled,
+    is_verification_delivery_ready,
 )
 from app.core.config import settings
 from app.core.rate_limit import client_ip, limiter
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import (
+    AdminPasswordResetRequest,
+    AdminPasswordResetResponse,
+    AuthCapabilitiesResponse,
     ContactSendCodesRequest,
     ContactSendCodesResponse,
     ContactVerifyCodeRequest,
@@ -20,15 +25,27 @@ from app.schemas.auth import (
     LoginAvailabilityResponse,
     LoginRequest,
     PasswordChangeRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetConfirmResponse,
+    PasswordResetRequest,
+    PasswordResetRequestResponse,
     ProfileUpdateRequest,
     ProfileUpdateResponse,
     RegisterRequest,
     TokenResponse,
     UserProfile,
 )
-from app.services import auth_service, contact_verification_service
+from app.services import auth_service, contact_verification_service, password_reset_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.get("/capabilities", response_model=AuthCapabilitiesResponse)
+async def auth_capabilities() -> AuthCapabilitiesResponse:
+    return AuthCapabilitiesResponse(
+        public_registration=settings.allow_public_registration,
+        password_reset=is_verification_delivery_ready(),
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -88,6 +105,26 @@ async def change_password(
     return await auth_service.change_password(db, user, payload)
 
 
+@router.post("/password-reset/request", response_model=PasswordResetRequestResponse)
+@limiter.limit(settings.auth_verify_rate_limit, key_func=client_ip)
+async def password_reset_request(
+    request: Request,
+    payload: PasswordResetRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> PasswordResetRequestResponse:
+    return await password_reset_service.request_password_reset(db, payload)
+
+
+@router.post("/password-reset/confirm", response_model=PasswordResetConfirmResponse)
+@limiter.limit(settings.auth_verify_rate_limit, key_func=client_ip)
+async def password_reset_confirm(
+    request: Request,
+    payload: PasswordResetConfirmRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> PasswordResetConfirmResponse:
+    return await password_reset_service.confirm_password_reset(db, payload)
+
+
 @router.post("/me/contact/send-codes", response_model=ContactSendCodesResponse)
 @limiter.limit(settings.auth_verify_rate_limit, key_func=client_ip)
 async def send_contact_codes(
@@ -96,7 +133,7 @@ async def send_contact_codes(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> ContactSendCodesResponse:
-    ensure_contact_verification_enabled()
+    ensure_verification_features_enabled()
     return await contact_verification_service.send_contact_codes(db, user, payload)
 
 

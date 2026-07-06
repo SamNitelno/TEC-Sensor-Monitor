@@ -6,8 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, require_admin
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.auth import DemoteResponse, PromoteResponse, UserListItem
-from app.services import user_service
+from app.schemas.auth import (
+    AdminPasswordResetRequest,
+    AdminPasswordResetResponse,
+    DemoteResponse,
+    PromoteResponse,
+    UserListItem,
+)
+from app.services import password_reset_service, user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -18,6 +24,19 @@ async def list_users(
     _: Annotated[User, Depends(require_admin)],
 ) -> list[UserListItem]:
     return await user_service.list_users(db)
+
+
+@router.post("/{user_id}/reset-password", response_model=AdminPasswordResetResponse)
+async def admin_reset_password(
+    user_id: int,
+    payload: AdminPasswordResetRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    actor: Annotated[User, Depends(require_admin)],
+) -> AdminPasswordResetResponse:
+    await password_reset_service.admin_reset_password(
+        db, actor=actor, target_user_id=user_id, payload=payload
+    )
+    return AdminPasswordResetResponse()
 
 
 @router.post("/{user_id}/promote", response_model=PromoteResponse)

@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:tek_sensor_monitor/core/api_config.dart';
+import 'package:tek_sensor_monitor/core/dio_http_client.dart';
+import 'package:tek_sensor_monitor/models/auth_capabilities.dart';
 import 'package:tek_sensor_monitor/models/auth_session.dart';
 import 'package:tek_sensor_monitor/models/notification.dart';
 import 'package:tek_sensor_monitor/models/contact_verification.dart';
@@ -7,6 +9,7 @@ import 'package:tek_sensor_monitor/models/downtime.dart';
 import 'package:tek_sensor_monitor/models/reading_point.dart';
 import 'package:tek_sensor_monitor/models/sensor.dart';
 import 'package:tek_sensor_monitor/models/site.dart';
+import 'package:tek_sensor_monitor/models/password_reset.dart';
 import 'package:tek_sensor_monitor/models/user.dart';
 
 typedef TokenGetter = String? Function();
@@ -27,6 +30,7 @@ class ApiClient {
             headers: {'Content-Type': 'application/json'},
           ),
         ) {
+    configureDioHttpClient(_dio);
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -87,6 +91,13 @@ class ApiClient {
       queryParameters: {'login': login},
     );
     return response.data?['available'] as bool? ?? false;
+  }
+
+  Future<AuthCapabilities> fetchAuthCapabilities() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/auth/capabilities',
+    );
+    return AuthCapabilities.fromJson(response.data ?? {});
   }
 
   Future<UserProfile> fetchProfile() async {
@@ -168,6 +179,45 @@ class ApiClient {
       },
     );
     return UserProfile.fromJson(response.data ?? {});
+  }
+
+  Future<PasswordResetRequestResult> requestPasswordReset({
+    String? email,
+    String? phone,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/auth/password-reset/request',
+      data: {
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+      },
+    );
+    return PasswordResetRequestResult.fromJson(response.data ?? {});
+  }
+
+  Future<void> confirmPasswordReset({
+    required String batchId,
+    required String code,
+    required String newPassword,
+  }) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/api/v1/auth/password-reset/confirm',
+      data: {
+        'batch_id': batchId,
+        'code': code,
+        'new_password': newPassword,
+      },
+    );
+  }
+
+  Future<void> adminResetUserPassword({
+    required int userId,
+    required String newPassword,
+  }) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/api/v1/users/$userId/reset-password',
+      data: {'new_password': newPassword},
+    );
   }
 
   Future<List<UserListItem>> fetchUsers() async {

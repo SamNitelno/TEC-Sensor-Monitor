@@ -59,9 +59,6 @@ def validate_production_settings(settings: Settings) -> None:
     if not settings.cors_origins.strip():
         errors.append("CORS_ORIGINS must be set explicitly in production")
 
-    if settings.allow_public_registration:
-        errors.append("ALLOW_PUBLIC_REGISTRATION must be false in production")
-
     if settings.verification_delivery_mode.strip().lower() == "production":
         errors.append(
             "VERIFICATION_DELIVERY_MODE=production is disabled for LAN prod; use log or test"

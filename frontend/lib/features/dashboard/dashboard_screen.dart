@@ -46,37 +46,67 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return SizedBox.expand(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Text(
-                  l10n.chartsTitle,
-                  style: Theme.of(context).textTheme.titleMedium,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final cols = dashboardGridColumns(panels.length, constraints.maxWidth);
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            l10n.chartsTitle,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const Spacer(),
+                          FilledButton.tonalIcon(
+                            onPressed: () =>
+                                ref.read(chartPanelsProvider.notifier).addPanel(),
+                            icon: const Icon(Icons.add_chart, size: 16),
+                            label: Text(l10n.addChart),
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      DashboardAlertsBar(connectionIssue: connectionIssue),
+                    ],
+                  ),
                 ),
-                const Spacer(),
-                FilledButton.tonalIcon(
-                  onPressed: () =>
-                      ref.read(chartPanelsProvider.notifier).addPanel(),
-                  icon: const Icon(Icons.add_chart, size: 16),
-                  label: Text(l10n.addChart),
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                SliverPadding(
+                  padding: const EdgeInsets.only(top: 4),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: _DashboardChartGrid.gap,
+                      mainAxisSpacing: _DashboardChartGrid.gap,
+                      mainAxisExtent: _DashboardChartGrid.minChartHeight,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final panel = panels[index];
+                        return ChartPanelCard(
+                          key: ValueKey(panel.id),
+                          panelId: panel.id,
+                          panelIndex: index,
+                          canRemove: panels.length > 1,
+                          connectionIssue: connectionIssue,
+                        );
+                      },
+                      childCount: panels.length,
+                    ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 8),
-            DashboardAlertsBar(connectionIssue: connectionIssue),
-            Expanded(
-              child: _DashboardChartGrid(
-                panels: panels,
-                connectionIssue: connectionIssue,
-              ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -90,54 +120,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-class _DashboardChartGrid extends StatelessWidget {
-  const _DashboardChartGrid({
-    required this.panels,
-    required this.connectionIssue,
-  });
-
-  final List<ChartPanelConfig> panels;
-  final String? connectionIssue;
-
-  static const _gap = 12.0;
-  static const _minChartHeight = 280.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cols = dashboardGridColumns(panels.length, constraints.maxWidth);
-        final rows = (panels.length / cols).ceil();
-        final totalMinHeight = rows * _minChartHeight + (rows - 1) * _gap;
-        final scrollable = totalMinHeight > constraints.maxHeight;
-        final tileHeight = scrollable
-            ? _minChartHeight
-            : (constraints.maxHeight - (rows - 1) * _gap) / rows;
-
-        return GridView.builder(
-          padding: EdgeInsets.zero,
-          physics: scrollable
-              ? const AlwaysScrollableScrollPhysics()
-              : const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: cols,
-            crossAxisSpacing: _gap,
-            mainAxisSpacing: _gap,
-            mainAxisExtent: tileHeight,
-          ),
-          itemCount: panels.length,
-          itemBuilder: (context, index) {
-            final panel = panels[index];
-            return ChartPanelCard(
-              key: ValueKey(panel.id),
-              panelId: panel.id,
-              panelIndex: index,
-              canRemove: panels.length > 1,
-              connectionIssue: connectionIssue,
-            );
-          },
-        );
-      },
-    );
-  }
+class _DashboardChartGrid {
+  static const gap = 12.0;
+  /// Full tile height (header + filters + chart). Chart area keeps >= [_minChartAreaHeight].
+  static const minChartHeight = 380.0;
+  static const minChartAreaHeight = 260.0;
 }

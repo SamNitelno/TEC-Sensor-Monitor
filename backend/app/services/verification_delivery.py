@@ -88,6 +88,41 @@ def _send_for_real() -> bool:
     return _delivery_mode() == "production"
 
 
+def verification_delivery_ready() -> bool:
+    """True when codes can reach users (production SMTP/SMS, dev log/test)."""
+    mode = _delivery_mode()
+    if mode == "test":
+        return True
+    if mode == "production":
+        has_email = bool(
+            settings.verification_smtp_user.strip()
+            and settings.verification_smtp_password.strip()
+        )
+        has_sms = bool(settings.verification_sms_api_id.strip())
+        return has_email or has_sms
+    if mode == "log":
+        return not settings.is_production
+    return False
+
+
+def delivery_channel_ready(channel: str) -> bool:
+    mode = _delivery_mode()
+    if mode == "test":
+        return True
+    if mode == "log":
+        return not settings.is_production
+    if mode != "production":
+        return False
+    if channel == "email":
+        return bool(
+            settings.verification_smtp_user.strip()
+            and settings.verification_smtp_password.strip()
+        )
+    if channel == "phone":
+        return bool(settings.verification_sms_api_id.strip())
+    return False
+
+
 def _log_dev_code(channel: str, destination: str) -> None:
     """Explicit dev-only path - never log the code itself."""
     logger.debug(
@@ -108,18 +143,39 @@ def format_delivery_error(exc: Exception) -> str:
     return str(exc)
 
 
-async def send_email_verification_code(*, to_email: str, code: str) -> None:
-    subject = "ТЭК · Код подтверждения email"
+async def send_sms_verification_code(*, to_phone: str, code: str) -> None:
+    await _send_sms_code(
+        to_phone=to_phone,
+        code=code,
+        purpose="phone",
+    )
+
+
+async def send_password_reset_email(*, to_email: str, code: str) -> None:
+    subject = "ТЭК · Сброс пароля"
     body = (
         "Здравствуйте!\n\n"
-        f"Код подтверждения email для системы мониторинга ТЭК: {code}\n\n"
-        "Код действует 10 минут. Если вы не запрашивали привязку, проигнорируйте письмо.\n"
+        f"Код для сброса пароля в системе мониторинга ТЭК: {code}\n\n"
+        "Код действует 10 минут. Если вы не запрашивали сброс, проигнорируйте письмо.\n"
     )
+    await _deliver_email(to_email=to_email, code=code, subject=subject, body=body)
+
+
+async def send_password_reset_sms(*, to_phone: str, code: str) -> None:
+    await _send_sms_code(
+        to_phone=to_phone,
+        code=code,
+        purpose="password_reset",
+        text=f"ТЭК: код сброса пароля {code}. Действует 10 минут.",
+    )
+
+
+async def _deliver_email(*, to_email: str, code: str, subject: str, body: str) -> None:
     _remember_test_code("email", to_email, code)
 
     mode = _delivery_mode()
     if mode == "test":
-        logger.info("TEST email verification queued for %s", mask_email(to_email))
+        logger.info("TEST email queued for %s", mask_email(to_email))
         return
 
     if mode == "log":
@@ -148,17 +204,33 @@ async def send_email_verification_code(*, to_email: str, code: str) -> None:
         smtp.starttls()
         smtp.login(settings.verification_smtp_user, settings.verification_smtp_password)
         smtp.send_message(message)
-    logger.info("Verification email sent to %s", mask_email(to_email))
+    logger.info("Email sent to %s", mask_email(to_email))
 
 
-async def send_sms_verification_code(*, to_phone: str, code: str) -> None:
+async def send_email_verification_code(*, to_email: str, code: str) -> None:
+    subject = "ТЭК · Код подтверждения email"
+    body = (
+        "Здравствуйте!\n\n"
+        f"Код подтверждения email для системы мониторинга ТЭК: {code}\n\n"
+        "Код действует 10 минут. Если вы не запрашивали привязку, проигнорируйте письмо.\n"
+    )
+    await _deliver_email(to_email=to_email, code=code, subject=subject, body=body)
+
+
+async def _send_sms_code(
+    *,
+    to_phone: str,
+    code: str,
+    purpose: str,
+    text: str | None = None,
+) -> None:
     normalized = normalize_phone(to_phone)
-    text = f"ТЭК: код подтверждения телефона {code}. Действует 10 минут."
+    sms_text = text or f"ТЭК: код подтверждения телефона {code}. Действует 10 минут."
     _remember_test_code("phone", normalized, code)
 
     mode = _delivery_mode()
     if mode == "test":
-        logger.info("TEST SMS verification queued for %s", mask_phone(normalized))
+        logger.info("TEST SMS queued for %s", mask_phone(normalized))
         return
 
     if mode == "log":
@@ -178,7 +250,7 @@ async def send_sms_verification_code(*, to_phone: str, code: str) -> None:
     payload = urllib.parse.urlencode(
         {
             "to": normalized,
-            "msg": text,
+            "msg": sms_text,
             "json": "1",
         }
     ).encode()
@@ -194,4 +266,4 @@ async def send_sms_verification_code(*, to_phone: str, code: str) -> None:
     )
     with urllib.request.urlopen(req, timeout=20) as response:
         response.read()
-    logger.info("Verification SMS sent to %s", mask_phone(normalized))
+    logger.info("SMS sent (%s) to %s", purpose, mask_phone(normalized))
