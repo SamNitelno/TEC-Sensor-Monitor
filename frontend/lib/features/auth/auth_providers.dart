@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tek_sensor_monitor/core/api_client.dart';
+import 'package:tek_sensor_monitor/core/api_url_provider.dart';
 import 'package:tek_sensor_monitor/core/auth_storage.dart';
 import 'package:tek_sensor_monitor/core/jwt_utils.dart';
 import 'package:tek_sensor_monitor/models/auth_capabilities.dart';
@@ -15,6 +16,9 @@ final authStorageProvider = FutureProvider<AuthStorage>((ref) async {
 });
 
 class AuthNotifier extends AsyncNotifier<AuthSession?> {
+  bool _logoutInFlight = false;
+  bool _loginInFlight = false;
+
   @override
   Future<AuthSession?> build() async {
     final storage = await ref.watch(authStorageProvider.future);
@@ -33,30 +37,41 @@ class AuthNotifier extends AsyncNotifier<AuthSession?> {
     );
   }
 
-  Future<void> _persistSession(AuthSession session) async {
+  Future<void> _saveSessionToStorage(AuthSession session) async {
     final storage = await ref.read(authStorageProvider.future);
     await storage.saveSession(
       token: session.token,
       role: session.role,
       login: session.login,
     );
+  }
+
+  Future<void> _persistSession(AuthSession session) async {
+    await _saveSessionToStorage(session);
     state = AsyncData(session);
   }
 
   Future<void> login(String login, String password) async {
-    state = await AsyncValue.guard(() async {
-      final client = ref.read(rawApiClientProvider);
-      final session = await client.login(login, password);
-      await _persistSession(session);
-      return session;
-    });
+    if (_loginInFlight || state.isLoading) return;
+    _loginInFlight = true;
+    try {
+      state = await AsyncValue.guard(() async {
+        final client = ref.read(rawApiClientProvider);
+        final session = await client.login(login, password);
+        await _saveSessionToStorage(session);
+        return session;
+      });
+    } finally {
+      _loginInFlight = false;
+    }
   }
 
   Future<void> register(String login, String password) async {
+    if (state.isLoading) return;
     state = await AsyncValue.guard(() async {
       final client = ref.read(rawApiClientProvider);
       final session = await client.register(login, password);
-      await _persistSession(session);
+      await _saveSessionToStorage(session);
       return session;
     });
   }
@@ -84,10 +99,18 @@ class AuthNotifier extends AsyncNotifier<AuthSession?> {
   }
 
   Future<void> logout() async {
-    final storage = await ref.read(authStorageProvider.future);
-    await storage.clear();
-    state = const AsyncData(null);
-    ref.invalidate(profileProvider);
+    if (_logoutInFlight || state.valueOrNull == null) {
+      return;
+    }
+    _logoutInFlight = true;
+    try {
+      final storage = await ref.read(authStorageProvider.future);
+      await storage.clear();
+      state = const AsyncData(null);
+      ref.invalidate(profileProvider);
+    } finally {
+      _logoutInFlight = false;
+    }
   }
 }
 
@@ -95,13 +118,22 @@ final authProvider = AsyncNotifierProvider<AuthNotifier, AuthSession?>(
   AuthNotifier.new,
 );
 
-final rawApiClientProvider = Provider<ApiClient>((ref) => ApiClient());
+final rawApiClientProvider = Provider<ApiClient>((ref) {
+  final baseUrl = ref.watch(apiBaseUrlProvider).requireValue;
+  return ApiClient(baseUrl: baseUrl);
+});
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final auth = ref.watch(authProvider).valueOrNull;
+  final baseUrl = ref.watch(apiBaseUrlProvider).requireValue;
   return ApiClient(
+    baseUrl: baseUrl,
     getToken: () => auth?.token,
-    onUnauthorized: () => ref.read(authProvider.notifier).logout(),
+    onUnauthorized: () {
+      if (ref.read(authProvider).valueOrNull != null) {
+        ref.read(authProvider.notifier).logout();
+      }
+    },
   );
 });
 
@@ -110,12 +142,17 @@ final isAdminProvider = Provider<bool>((ref) {
 });
 
 final profileProvider = FutureProvider<UserProfile>((ref) async {
-  ref.watch(authProvider);
+  final session = ref.watch(authProvider).valueOrNull;
+  if (session == null) {
+    throw StateError('not authenticated');
+  }
   final client = ref.watch(apiClientProvider);
   return client.fetchProfile();
 });
 
 final usersProvider = FutureProvider<List<UserListItem>>((ref) async {
+  final session = ref.watch(authProvider).valueOrNull;
+  if (session == null) return [];
   final client = ref.watch(apiClientProvider);
   return client.fetchUsers();
 });

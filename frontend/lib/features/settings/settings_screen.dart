@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tek_sensor_monitor/core/api_config.dart';
+import 'package:tek_sensor_monitor/core/api_url_provider.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/core/locale/locale_provider.dart';
@@ -29,9 +31,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _serverUrlController = TextEditingController();
   bool _savingProfile = false;
   bool _savingPassword = false;
+  bool _savingServerUrl = false;
   bool _initialized = false;
+  bool _serverUrlInitialized = false;
   String? _passwordChangeSuccess;
 
   @override
@@ -42,6 +47,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+    _serverUrlController.dispose();
     super.dispose();
   }
 
@@ -51,6 +57,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _emailController.text = profile.email ?? '';
     _phoneController.text = profile.phone ?? '';
     _initialized = true;
+  }
+
+  void _initServerUrl(String baseUrl) {
+    if (_serverUrlInitialized) return;
+    _serverUrlController.text = baseUrl;
+    _serverUrlInitialized = true;
+  }
+
+  Future<void> _saveServerUrl() async {
+    final l10n = context.l10n;
+    final code = validateApiBaseUrlInput(_serverUrlController.text);
+    if (code != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.errorInvalidServerUrl)),
+      );
+      return;
+    }
+
+    setState(() => _savingServerUrl = true);
+    try {
+      await ref
+          .read(apiBaseUrlProvider.notifier)
+          .setUrl(_serverUrlController.text);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.serverUrlSaved)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(friendlyApiError(e, l10n))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingServerUrl = false);
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -149,6 +192,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final profileAsync = ref.watch(profileProvider);
+    final baseUrl = ref.watch(apiBaseUrlProvider).valueOrNull;
+    if (baseUrl != null) {
+      _initServerUrl(baseUrl);
+    }
 
     return profileAsync.when(
       loading: () => const TekPageLoading(),
@@ -392,11 +439,54 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(l10n.serverUrlLabel,
+                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.serverUrlHelper,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _serverUrlController,
+                      decoration: InputDecoration(
+                        labelText: l10n.serverUrlLabel,
+                        hintText: apiBaseUrlPlaceholder,
+                        border: const OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: _savingServerUrl ? null : _saveServerUrl,
+                      child: _savingServerUrl
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(l10n.saveServerUrl),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             OutlinedButton.icon(
-              onPressed: () {
-                ref.read(authProvider.notifier).logout();
-                context.go('/login');
-              },
+              onPressed: _savingProfile || _savingPassword || _savingServerUrl
+                  ? null
+                  : () async {
+                      await ref.read(authProvider.notifier).logout();
+                      if (context.mounted) context.go('/login');
+                    },
               icon: const Icon(Icons.logout),
               label: Text(l10n.signOutAccount),
             ),

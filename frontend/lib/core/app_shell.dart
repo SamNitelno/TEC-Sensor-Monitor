@@ -203,8 +203,9 @@ class _UserAccountMenu extends ConsumerWidget {
           case 'settings':
             context.go('/settings');
           case 'logout':
-            ref.read(authProvider.notifier).logout();
-            context.go('/login');
+            ref.read(authProvider.notifier).logout().then((_) {
+              if (context.mounted) context.go('/login');
+            });
         }
       },
       itemBuilder: (context) => [

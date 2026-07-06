@@ -13,4 +13,36 @@ void main() {
   test('resolveApiBaseUrl preserves public hosts on desktop test runner', () {
     expect(resolveApiBaseUrl('https://example.com'), 'https://example.com');
   });
+
+  test('resolveApiBaseUrl preserves LAN IPs on test runner (non-Android)', () {
+    expect(
+      resolveApiBaseUrl('http://192.168.0.181:8000'),
+      'http://192.168.0.181:8000',
+    );
+  });
+
+  test('resolveApiBaseUrl preserves LAN hostnames on test runner', () {
+    expect(
+      resolveApiBaseUrl('https://tek-server.local'),
+      'https://tek-server.local',
+    );
+  });
+
+  test('validateApiBaseUrlInput accepts http and https URLs', () {
+    expect(validateApiBaseUrlInput('https://192.168.0.181'), isNull);
+    expect(validateApiBaseUrlInput('http://192.168.0.181:8000'), isNull);
+    expect(validateApiBaseUrlInput('ftp://192.168.0.181'), isNotNull);
+    expect(validateApiBaseUrlInput(''), isNotNull);
+  });
+
+  test('normalizeApiBaseUrl strips trailing slashes', () {
+    expect(normalizeApiBaseUrl('https://192.168.0.181/'), 'https://192.168.0.181');
+  });
+
+  test('computeApiBaseUrl prefers saved URL over dart-define default', () {
+    expect(
+      computeApiBaseUrl(savedUrl: 'https://saved.example:443'),
+      'https://saved.example:443',
+    );
+  });
 }

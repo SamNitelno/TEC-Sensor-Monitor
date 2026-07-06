@@ -851,6 +851,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hexColorFormat => 'Format: #RRGGBB';
 
   @override
+  String get serverUrlLabel => 'Server address';
+
+  @override
+  String get serverUrlHelper =>
+      'API server URL (http or https, include port if needed)';
+
+  @override
+  String get saveServerUrl => 'Save server address';
+
+  @override
+  String get serverUrlSaved => 'Server address saved';
+
+  @override
+  String get errorInvalidServerUrl => 'Enter a valid URL (http:// or https://)';
+
+  @override
+  String errorNoConnectionTo(String url) {
+    return 'Cannot reach server at $url';
+  }
+
+  @override
   String get errorNoConnection => 'No server connection';
 
   @override

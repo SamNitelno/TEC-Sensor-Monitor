@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
+import 'package:tek_sensor_monitor/core/api_url_provider.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/widgets/auth_scaffold.dart';
 import 'package:tek_sensor_monitor/widgets/tek_loading_indicator.dart';
@@ -30,27 +31,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    if (_isSubmitting) return;
+
     final l10n = context.l10n;
-    setState(() {
-      _isSubmitting = true;
-      _errorMessage = null;
-    });
+    final password = _passwordController.text;
+    if (password.isEmpty) {
+      setState(() => _errorMessage = l10n.errorPasswordRequired);
+      return;
+    }
+
+    _isSubmitting = true;
+    setState(() => _errorMessage = null);
+
     try {
       await ref.read(authProvider.notifier).login(
             _loginController.text.trim(),
-            _passwordController.text,
+            password,
           );
       if (!mounted) return;
       final authState = ref.read(authProvider);
       if (authState.hasError) {
+        final serverUrl = ref.read(apiBaseUrlProvider).valueOrNull;
         setState(() {
-          _errorMessage = friendlyApiError(authState.error!, l10n);
+          _errorMessage = friendlyApiError(
+            authState.error!,
+            l10n,
+            serverUrl: serverUrl,
+          );
         });
       }
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      _isSubmitting = false;
+      if (mounted) setState(() {});
     }
   }
 
@@ -65,6 +77,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return AuthScaffold(
       title: l10n.appTitleShort,
       subtitle: l10n.loginTitle,
+      footer: TextButton(
+        onPressed: _isSubmitting ? null : () => context.go('/register'),
+        child: Text(l10n.noAccountRegister),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -74,7 +90,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               decoration: BoxDecoration(
                 color: TekColors.error.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: TekColors.error.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: TekColors.error.withValues(alpha: 0.4),
+                ),
               ),
               child: Text(
                 _errorMessage!,
@@ -98,21 +116,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               helperMaxLines: 2,
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  _obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                 ),
                 onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),
             obscureText: _obscure,
             enabled: !_isSubmitting,
-            onSubmitted: (_) => _submit(),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              if (!_isSubmitting) _submit();
+            },
           ),
           if (showForgotPassword) ...[
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: _isSubmitting ? null : () => context.go('/forgot-password'),
+                onPressed:
+                    _isSubmitting ? null : () => context.go('/forgot-password'),
                 child: Text(l10n.forgotPassword),
               ),
             ),
@@ -125,10 +149,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 : Text(l10n.signIn),
           ),
         ],
-      ),
-      footer: TextButton(
-        onPressed: _isSubmitting ? null : () => context.go('/register'),
-        child: Text(l10n.noAccountRegister),
       ),
     );
   }

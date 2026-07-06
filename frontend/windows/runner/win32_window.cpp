@@ -88,7 +88,8 @@ WindowClassRegistrar* WindowClassRegistrar::instance_ = nullptr;
 
 const wchar_t* WindowClassRegistrar::GetWindowClass() {
   if (!class_registered_) {
-    WNDCLASS window_class{};
+    WNDCLASSEXW window_class{};
+    window_class.cbSize = sizeof(WNDCLASSEX);
     window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
     window_class.lpszClassName = kWindowClassName;
     window_class.style = CS_HREDRAW | CS_VREDRAW;
@@ -97,17 +98,19 @@ const wchar_t* WindowClassRegistrar::GetWindowClass() {
     window_class.hInstance = GetModuleHandle(nullptr);
     window_class.hIcon =
         LoadIcon(window_class.hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
+    window_class.hIconSm =
+        LoadIcon(window_class.hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
     window_class.hbrBackground = 0;
     window_class.lpszMenuName = nullptr;
     window_class.lpfnWndProc = Win32Window::WndProc;
-    RegisterClass(&window_class);
+    RegisterClassExW(&window_class);
     class_registered_ = true;
   }
   return kWindowClassName;
 }
 
 void WindowClassRegistrar::UnregisterWindowClass() {
-  UnregisterClass(kWindowClassName, nullptr);
+  UnregisterClassW(kWindowClassName, nullptr);
   class_registered_ = false;
 }
 
@@ -142,6 +145,15 @@ bool Win32Window::Create(const std::wstring& title,
 
   if (!window) {
     return false;
+  }
+
+  HINSTANCE instance = GetModuleHandle(nullptr);
+  HICON app_icon = LoadIcon(instance, MAKEINTRESOURCE(IDI_APP_ICON));
+  if (app_icon != nullptr) {
+    SendMessage(window, WM_SETICON, ICON_BIG,
+                reinterpret_cast<LPARAM>(app_icon));
+    SendMessage(window, WM_SETICON, ICON_SMALL,
+                reinterpret_cast<LPARAM>(app_icon));
   }
 
   UpdateTheme(window);

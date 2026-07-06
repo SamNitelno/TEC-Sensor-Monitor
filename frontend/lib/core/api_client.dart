@@ -45,7 +45,8 @@ class ApiClient {
             final path = error.requestOptions.path;
             final isAuthAttempt = path.contains('/auth/login') ||
                 path.contains('/auth/register');
-            if (!isAuthAttempt) {
+            final token = _getToken?.call();
+            if (!isAuthAttempt && token != null && token.isNotEmpty) {
               _onUnauthorized?.call();
             }
           }

@@ -850,6 +850,28 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hexColorFormat => 'Формат: #RRGGBB';
 
   @override
+  String get serverUrlLabel => 'Адрес сервера';
+
+  @override
+  String get serverUrlHelper =>
+      'URL API-сервера (http или https, с портом при необходимости)';
+
+  @override
+  String get saveServerUrl => 'Сохранить адрес';
+
+  @override
+  String get serverUrlSaved => 'Адрес сервера сохранён';
+
+  @override
+  String get errorInvalidServerUrl =>
+      'Укажите корректный URL (http:// или https://)';
+
+  @override
+  String errorNoConnectionTo(String url) {
+    return 'Нет связи с сервером $url';
+  }
+
+  @override
   String get errorNoConnection => 'Нет связи с сервером';
 
   @override

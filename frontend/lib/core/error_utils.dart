@@ -1,12 +1,19 @@
 import 'package:dio/dio.dart';
 import 'package:tek_sensor_monitor/l10n/app_localizations.dart';
 
-String friendlyApiError(Object error, AppLocalizations l10n) {
+String friendlyApiError(
+  Object error,
+  AppLocalizations l10n, {
+  String? serverUrl,
+}) {
   if (error is DioException) {
     switch (error.type) {
       case DioExceptionType.connectionError:
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.receiveTimeout:
+        if (serverUrl != null && serverUrl.isNotEmpty) {
+          return l10n.errorNoConnectionTo(serverUrl);
+        }
         return l10n.errorNoConnection;
       case DioExceptionType.badResponse:
         final code = error.response?.statusCode;

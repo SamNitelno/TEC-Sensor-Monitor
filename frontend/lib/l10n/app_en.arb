@@ -255,6 +255,17 @@
   "themeLight": "Light",
   "themeDark": "Dark",
   "hexColorFormat": "Format: #RRGGBB",
+  "serverUrlLabel": "Server address",
+  "serverUrlHelper": "API server URL (http or https, include port if needed)",
+  "saveServerUrl": "Save server address",
+  "serverUrlSaved": "Server address saved",
+  "errorInvalidServerUrl": "Enter a valid URL (http:// or https://)",
+  "errorNoConnectionTo": "Cannot reach server at {url}",
+  "@errorNoConnectionTo": {
+    "placeholders": {
+      "url": {"type": "String"}
+    }
+  },
   "errorNoConnection": "No server connection",
   "errorAuthRequired": "Sign-in required",
   "errorForbidden": "Insufficient permissions",
