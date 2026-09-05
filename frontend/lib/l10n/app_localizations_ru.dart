@@ -773,6 +773,63 @@ class AppLocalizationsRu extends AppLocalizations {
   String get ssidRequired => 'Укажите SSID Wi-Fi';
 
   @override
+  String get ingestUrlRequired => 'Укажите URL приёма данных';
+
+  @override
+  String get tokenRequired => 'Укажите токен устройства';
+
+  @override
+  String get deviceTokenLabel => 'Токен устройства';
+
+  @override
+  String get deviceTokenHelper =>
+      'Вставьте токен, сохранённый при создании датчика, или выпустите новый';
+
+  @override
+  String get issueNewToken => 'Выпустить новый токен';
+
+  @override
+  String get rotateTokenTitle => 'Выпустить новый токен?';
+
+  @override
+  String get rotateTokenWarning =>
+      'Прежний токен перестанет работать. Датчик, прошитый со старым токеном, потеряет связь до повторной привязки.';
+
+  @override
+  String get rotateTokenConfirm => 'Выпустить';
+
+  @override
+  String get tokenRotated => 'Новый токен выпущен';
+
+  @override
+  String tokenRotateFailed(String error) {
+    return 'Не удалось выпустить токен: $error';
+  }
+
+  @override
+  String get noSensorsForProvisioning =>
+      'Сначала создайте датчик в разделе «Датчики»';
+
+  @override
+  String get bleAdapterOff => 'Bluetooth выключен';
+
+  @override
+  String get bleTurnOn => 'Включить Bluetooth';
+
+  @override
+  String get bleTurnOnManually => 'Включите Bluetooth в настройках системы';
+
+  @override
+  String get bleUnavailable => 'Bluetooth недоступен на этом устройстве';
+
+  @override
+  String get blePermissionRequired =>
+      'Нет разрешения на Bluetooth. Разрешите доступ в настройках приложения.';
+
+  @override
+  String get openAppSettings => 'Настройки приложения';
+
+  @override
   String get onlineTimeout =>
       'Датчик не перешёл в online за 90 с. Проверьте Wi-Fi и URL сервера.';
 

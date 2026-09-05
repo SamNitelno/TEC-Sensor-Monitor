@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tek_sensor_monitor/core/error_utils.dart';
 import 'package:tek_sensor_monitor/core/l10n/l10n_extensions.dart';
 import 'package:tek_sensor_monitor/core/theme/color_tokens.dart';
+import 'package:tek_sensor_monitor/core/api_config.dart';
 import 'package:tek_sensor_monitor/core/api_url_provider.dart';
 import 'package:tek_sensor_monitor/features/auth/auth_providers.dart';
 import 'package:tek_sensor_monitor/widgets/auth_scaffold.dart';
@@ -66,9 +67,86 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  /// The server address is only reachable from Settings, which needs a
+  /// session — so it has to be editable here too, or a device pointed at the
+  /// wrong host can never sign in.
+  Future<void> _editServerUrl() async {
+    final l10n = context.l10n;
+    final current = ref.read(apiBaseUrlProvider).valueOrNull ?? defaultApiBaseUrl;
+    final controller = TextEditingController(text: current);
+    String? fieldError;
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(l10n.serverUrlLabel),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.serverUrlHelper,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: l10n.serverUrlLabel,
+                  hintText: apiBaseUrlPlaceholder,
+                  errorText: fieldError,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (validateApiBaseUrlInput(controller.text) != null) {
+                  setDialogState(() => fieldError = l10n.errorInvalidServerUrl);
+                  return;
+                }
+                Navigator.pop(context, controller.text);
+              },
+              child: Text(l10n.saveServerUrl),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    controller.dispose();
+    if (result == null || !mounted) return;
+
+    try {
+      await ref.read(apiBaseUrlProvider.notifier).setUrl(result);
+      if (!mounted) return;
+      setState(() => _errorMessage = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.serverUrlSaved)),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = friendlyApiError(e, l10n));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final serverUrl =
+        ref.watch(apiBaseUrlProvider).valueOrNull ?? defaultApiBaseUrl;
     final showForgotPassword = ref.watch(authCapabilitiesProvider).maybeWhen(
           data: (c) => c.passwordReset,
           orElse: () => true,
@@ -147,6 +225,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: _isSubmitting
                 ? const TekLoadingIndicator(size: 24, compact: true)
                 : Text(l10n.signIn),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: TextButton.icon(
+              onPressed: _isSubmitting ? null : _editServerUrl,
+              icon: const Icon(Icons.dns_outlined, size: 18),
+              label: Text(l10n.serverUrlLabel),
+            ),
+          ),
+          Center(
+            child: Text(
+              serverUrl,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ),
         ],
       ),

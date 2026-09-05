@@ -1,10 +1,13 @@
 import secrets
 
-from sqlalchemy import select
+from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.device_token import is_hashed_device_token, store_device_token
+from app.models.downtime_event import DowntimeEvent
+from app.models.reading import Reading
 from app.models.sensor import Sensor, SensorStatus
+from app.models.sensor_placement_history import SensorPlacementHistory
 from app.models.site import Site
 
 
@@ -183,7 +186,14 @@ async def set_notifications_enabled_for_workshop(
 
 
 async def delete(session: AsyncSession, sensor: Sensor) -> None:
-    await session.delete(sensor)
+    # The ORM would try to blank out the children's sensor_id, which fails:
+    # readings.sensor_id is part of the hypertable primary key, and the other
+    # two are NOT NULL. Remove dependants explicitly, then the sensor row.
+    sensor_id = sensor.id
+    for model in (Reading, DowntimeEvent, SensorPlacementHistory):
+        await session.execute(sa_delete(model).where(model.sensor_id == sensor_id))
+    await session.execute(sa_delete(Sensor).where(Sensor.id == sensor_id))
+    session.expunge(sensor)
 
 
 async def update_last_seen(

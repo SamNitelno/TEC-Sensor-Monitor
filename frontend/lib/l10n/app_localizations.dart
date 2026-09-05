@@ -1472,6 +1472,108 @@ abstract class AppLocalizations {
   /// **'Укажите SSID Wi-Fi'**
   String get ssidRequired;
 
+  /// No description provided for @ingestUrlRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Укажите URL приёма данных'**
+  String get ingestUrlRequired;
+
+  /// No description provided for @tokenRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Укажите токен устройства'**
+  String get tokenRequired;
+
+  /// No description provided for @deviceTokenLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Токен устройства'**
+  String get deviceTokenLabel;
+
+  /// No description provided for @deviceTokenHelper.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вставьте токен, сохранённый при создании датчика, или выпустите новый'**
+  String get deviceTokenHelper;
+
+  /// No description provided for @issueNewToken.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выпустить новый токен'**
+  String get issueNewToken;
+
+  /// No description provided for @rotateTokenTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выпустить новый токен?'**
+  String get rotateTokenTitle;
+
+  /// No description provided for @rotateTokenWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прежний токен перестанет работать. Датчик, прошитый со старым токеном, потеряет связь до повторной привязки.'**
+  String get rotateTokenWarning;
+
+  /// No description provided for @rotateTokenConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выпустить'**
+  String get rotateTokenConfirm;
+
+  /// No description provided for @tokenRotated.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новый токен выпущен'**
+  String get tokenRotated;
+
+  /// No description provided for @tokenRotateFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось выпустить токен: {error}'**
+  String tokenRotateFailed(String error);
+
+  /// No description provided for @noSensorsForProvisioning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сначала создайте датчик в разделе «Датчики»'**
+  String get noSensorsForProvisioning;
+
+  /// No description provided for @bleAdapterOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Bluetooth выключен'**
+  String get bleAdapterOff;
+
+  /// No description provided for @bleTurnOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включить Bluetooth'**
+  String get bleTurnOn;
+
+  /// No description provided for @bleTurnOnManually.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включите Bluetooth в настройках системы'**
+  String get bleTurnOnManually;
+
+  /// No description provided for @bleUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Bluetooth недоступен на этом устройстве'**
+  String get bleUnavailable;
+
+  /// No description provided for @blePermissionRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет разрешения на Bluetooth. Разрешите доступ в настройках приложения.'**
+  String get blePermissionRequired;
+
+  /// No description provided for @openAppSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки приложения'**
+  String get openAppSettings;
+
   /// No description provided for @onlineTimeout.
   ///
   /// In ru, this message translates to:

@@ -774,6 +774,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ssidRequired => 'Enter Wi-Fi SSID';
 
   @override
+  String get ingestUrlRequired => 'Enter the ingest URL';
+
+  @override
+  String get tokenRequired => 'Enter the device token';
+
+  @override
+  String get deviceTokenLabel => 'Device token';
+
+  @override
+  String get deviceTokenHelper =>
+      'Paste the token saved when the sensor was created, or issue a new one';
+
+  @override
+  String get issueNewToken => 'Issue new token';
+
+  @override
+  String get rotateTokenTitle => 'Issue a new token?';
+
+  @override
+  String get rotateTokenWarning =>
+      'The previous token stops working. A device flashed with the old token will lose connection until it is paired again.';
+
+  @override
+  String get rotateTokenConfirm => 'Issue';
+
+  @override
+  String get tokenRotated => 'New token issued';
+
+  @override
+  String tokenRotateFailed(String error) {
+    return 'Failed to issue token: $error';
+  }
+
+  @override
+  String get noSensorsForProvisioning =>
+      'Create a sensor on the Sensors screen first';
+
+  @override
+  String get bleAdapterOff => 'Bluetooth is off';
+
+  @override
+  String get bleTurnOn => 'Turn on Bluetooth';
+
+  @override
+  String get bleTurnOnManually => 'Turn on Bluetooth in the system settings';
+
+  @override
+  String get bleUnavailable => 'Bluetooth is not available on this device';
+
+  @override
+  String get blePermissionRequired =>
+      'Bluetooth permission is missing. Grant access in the app settings.';
+
+  @override
+  String get openAppSettings => 'App settings';
+
+  @override
   String get onlineTimeout =>
       'Sensor did not go online within 90 s. Check Wi-Fi and server URL.';
 

@@ -374,6 +374,28 @@
   },
   "selectDeviceAndSensor": "Выберите ESP и зарегистрированный датчик",
   "ssidRequired": "Укажите SSID Wi-Fi",
+  "ingestUrlRequired": "Укажите URL приёма данных",
+  "tokenRequired": "Укажите токен устройства",
+  "deviceTokenLabel": "Токен устройства",
+  "deviceTokenHelper": "Вставьте токен, сохранённый при создании датчика, или выпустите новый",
+  "issueNewToken": "Выпустить новый токен",
+  "rotateTokenTitle": "Выпустить новый токен?",
+  "rotateTokenWarning": "Прежний токен перестанет работать. Датчик, прошитый со старым токеном, потеряет связь до повторной привязки.",
+  "rotateTokenConfirm": "Выпустить",
+  "tokenRotated": "Новый токен выпущен",
+  "tokenRotateFailed": "Не удалось выпустить токен: {error}",
+  "@tokenRotateFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "noSensorsForProvisioning": "Сначала создайте датчик в разделе «Датчики»",
+  "bleAdapterOff": "Bluetooth выключен",
+  "bleTurnOn": "Включить Bluetooth",
+  "bleTurnOnManually": "Включите Bluetooth в настройках системы",
+  "bleUnavailable": "Bluetooth недоступен на этом устройстве",
+  "blePermissionRequired": "Нет разрешения на Bluetooth. Разрешите доступ в настройках приложения.",
+  "openAppSettings": "Настройки приложения",
   "onlineTimeout": "Датчик не перешёл в online за 90 с. Проверьте Wi-Fi и URL сервера.",
   "connectedTo": "Подключено: {deviceName}",
   "@connectedTo": {

@@ -131,17 +131,24 @@ class ProvisioningCredentials {
   const ProvisioningCredentials({
     required this.apiToken,
     required this.ingestUrl,
+    this.message,
   });
 
   factory ProvisioningCredentials.fromJson(Map<String, dynamic> json) {
     return ProvisioningCredentials(
-      apiToken: json['api_token'] as String,
+      // Device tokens are stored hashed: the plaintext is only available right
+      // after creation or rotation, so this is null on a plain lookup.
+      apiToken: json['api_token'] as String?,
       ingestUrl: json['ingest_url'] as String,
+      message: json['message'] as String?,
     );
   }
 
-  final String apiToken;
+  final String? apiToken;
   final String ingestUrl;
+  final String? message;
+
+  bool get hasToken => apiToken != null && apiToken!.isNotEmpty;
 }
 
 class SensorCreateResult {

@@ -400,6 +400,14 @@ class ApiClient {
     return ProvisioningCredentials.fromJson(response.data ?? {});
   }
 
+  /// Issues a new device token. The old one stops working immediately.
+  Future<ProvisioningCredentials> rotateSensorToken(int sensorId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/sensors/$sensorId/rotate-token',
+    );
+    return ProvisioningCredentials.fromJson(response.data ?? {});
+  }
+
   Future<List<Site>> fetchSites({int? workshopId}) async {
     final response = await _dio.get<List<dynamic>>(
       '/api/v1/sites',
