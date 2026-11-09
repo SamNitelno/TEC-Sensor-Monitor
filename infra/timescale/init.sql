@@ -1,1 +1,1 @@
--- TimescaleDB initialization (optional; extension is created by Alembic migration)
+-- TimescaleDB initialization (optional; extension is created by backend migration 00001)

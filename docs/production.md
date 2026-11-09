@@ -40,7 +40,7 @@ docker compose -f docker-compose.prod.yml --profile mqtt up -d
 ```
 [ESP/браузер] → nginx:443
                  ├─ /          → Flutter Web (static)
-                 ├─ /api/*     → gunicorn+uvicorn (backend:8000)
+                 ├─ /api/*     → Go backend (backend:8000)
                  └─ /ws        → WebSocket (backend:8000)
 
 [ESP MQTT] → mosquitto:1883 → backend subscriber → TimescaleDB
@@ -72,9 +72,10 @@ docker compose -f docker-compose.prod.yml --profile mqtt up -d
 | `API_PUBLIC_BASE_URL` | URL для ESP-сниппетов и Flutter build |
 | `CORS_ORIGINS` | Разрешённые origins (через запятую) |
 | `MQTT_ENABLED` | Включить MQTT-подписчик backend |
-| `WEB_CONCURRENCY` | Gunicorn workers (1 для WS без Redis) |
 
 ## TimescaleDB
+
+Миграции схемы встроены в Go-бинарник (`backend/internal/db`) и применяются при каждом старте (`/app/server migrate` — только миграции). БД, созданная прежним Python-backend (Alembic), подхватывается без повторного применения DDL.
 
 Миграция `012` настраивает:
 
@@ -93,13 +94,14 @@ WHERE proc_name IN ('policy_compression', 'policy_retention', 'policy_refresh_co
 
 - Эндпоинт: `wss://<host>/ws?token=<JWT>`
 - События: `reading`, `sensor_status`, `ping`
+- Backend — один процесс: WebSocket-хаб, воркеры и MQTT-подписчик не дублируются (прежнее ограничение `WEB_CONCURRENCY=1` больше не нужно)
 - Frontend подключается после логина, графики обновляются без polling
 
 ## Dev vs Prod
 
 | | Dev (`docker compose up`) | Prod (`docker-compose.prod.yml`) |
 |--|---------------------------|----------------------------------|
-| Backend | uvicorn --reload | gunicorn + uvicorn workers |
+| Backend | Go-образ (`docker compose up -d --build backend`) | тот же Go-образ, `APP_ENV=production`, healthcheck `/app/server healthcheck` |
 | Frontend | `flutter run` | nginx static build |
 | TLS | нет | self-signed / Let's Encrypt |
 | Порты | 8000, 5432 | 80, 443 |

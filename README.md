@@ -41,7 +41,7 @@
 ```
 ┌─────────────┐     HTTP :8000      ┌──────────────┐     ┌─────────────┐
 │ Flutter     │ ──────────────────► │   Backend    │ ──► │ TimescaleDB │
-│ (run/dev)   │     /api/v1, /ws    │   uvicorn    │     │   :5432     │
+│ (run/dev)   │     /api/v1, /ws    │   Go (chi)   │     │   :5432     │
 └─────────────┘                     └──────────────┘     └─────────────┘
                                            ▲
 ┌─────────────┐     HTTP :8000             │
@@ -56,7 +56,7 @@
 ┌─────────────┐  HTTPS :443   ┌─────────────────────────────────────────┐
 │ Браузер /   │ ────────────► │ nginx                                   │
 │ Flutter app │               │  /          → Flutter Web (static)        │
-└─────────────┘               │  /api/*     → gunicorn → backend:8000   │
+└─────────────┘               │  /api/*     → Go backend:8000           │
                               │  /ws        → WebSocket (JWT)           │
                               └─────────────────────────────────────────┘
                                            ▲
@@ -81,7 +81,7 @@ flowchart LR
 
   subgraph server [Сервер]
     NG[nginx]
-    BE[FastAPI backend]
+    BE[Go backend]
     DB[(TimescaleDB)]
     NG --> BE --> DB
   end
@@ -106,7 +106,7 @@ flowchart LR
 | Docker + Compose | для backend и prod-стека |
 | Flutter SDK | ^3.6 (Web, Windows, Android, macOS, Linux) |
 | PlatformIO | прошивка ESP32 |
-| Python 3.12+ | эмуляторы, `prepare_esp_secrets.py`, pytest |
+| Go 1.27+ | только для локальной сборки/тестов backend и `tektool` на хосте (в Docker не нужен) |
 | mkcert | рекомендуется для TLS на native-клиентах в LAN |
 
 ---
@@ -124,7 +124,7 @@ copy .env.example .env
 ```env
 APP_ENV=development
 POSTGRES_PASSWORD=tek_secret
-DATABASE_URL=postgresql+asyncpg://tek:tek_secret@timescaledb:5432/tek_sensor
+DATABASE_URL=postgresql://tek:tek_secret@timescaledb:5432/tek_sensor
 JWT_SECRET=dev-jwt-secret-min-32-characters-long
 ADMIN_LOGIN=admin
 ADMIN_PASSWORD=admin
@@ -134,7 +134,7 @@ ALLOW_PUBLIC_REGISTRATION=true
 API_PUBLIC_BASE_URL=http://localhost:8000
 ```
 
-Пароли `admin` / `viewer` синхронизируются при старте backend (bootstrap).
+Пароли `admin` / `viewer` синхронизируются при старте backend (bootstrap). Формат `postgresql+asyncpg://` из старых `.env` тоже принимается.
 
 ### 2. Backend
 
@@ -143,8 +143,11 @@ docker compose up -d
 ```
 
 - API: `http://localhost:8000`
-- Swagger (только dev): `http://localhost:8000/docs`
 - Health: `http://localhost:8000/health`
+
+Backend — один Go-бинарник (`backend/`): при старте применяет миграции схемы, создаёт/синхронизирует admin и viewer, запускает HTTP API, WebSocket и фоновые воркеры (детекция простоя, offline-watchdog, MQTT). После изменения кода: `docker compose up -d --build backend`.
+
+Существующая БД, созданная прежним Python-backend (Alembic), подхватывается автоматически: история миграций переносится в таблицу `goose_db_version`, схема и данные не меняются.
 
 ### 3. Frontend
 
@@ -173,7 +176,6 @@ flutter run -d chrome
 | `API_PUBLIC_BASE_URL` | Публичный URL для клиентов и сниппетов (`https://<LAN-IP>` в prod) |
 | `DEVICE_INGEST_BASE_URL` | URL ingest для ESP (**HTTP**, без порта 8000). Пусто → автоматически `http://` из HTTPS base |
 | `CORS_ORIGINS` | В prod: список origins через запятую |
-| `WEB_CONCURRENCY` | Gunicorn workers (**1** — для WebSocket без Redis) |
 
 ---
 
@@ -212,7 +214,8 @@ BLE также доступен: иконка Bluetooth в шапке (admin) и
 Сгенерируйте сильные значения и запишите в `.env`:
 
 ```powershell
-python -c "import secrets; print('JWT_SECRET='+secrets.token_urlsafe(48)); print('ADMIN_PASSWORD='+secrets.token_urlsafe(16)+'A1'); print('VIEWER_PASSWORD='+secrets.token_urlsafe(16)+'B2')"
+docker compose run --rm --no-deps --entrypoint /app/tektool backend gen-secrets
+# или на хосте: cd backend; go run ./cmd/tektool gen-secrets
 ```
 
 Обязательно задайте:
@@ -281,7 +284,8 @@ curl -X POST http://192.168.1.100/api/v1/ingest `
 ### 5. MQTT (опционально)
 
 ```powershell
-# Создайте infra/mosquitto/passwd (mosquitto_passwd)
+# Создайте infra/mosquitto/passwd (логин/пароль = MQTT_USERNAME / MQTT_PASSWORD из .env)
+docker run --rm -v "${PWD}/infra/mosquitto:/m" --entrypoint sh eclipse-mosquitto:2 -c "mosquitto_passwd -b -c /m/passwd tek <пароль> && chmod 644 /m/passwd"
 docker compose -f docker-compose.prod.yml --profile mqtt up -d
 ```
 
@@ -513,10 +517,12 @@ pio run -e esp32dev_jsy_hc -t upload
 
 Файл `secrets.h` в `.gitignore` — не коммитить.
 
-Автогенерация из API (если токен ещё известен или задан `DEVICE_TOKEN` в `.env`):
+Автогенерация из API (`--rotate` выпускает новый токен — старый перестаёт действовать; без него берётся `DEVICE_TOKEN` из `.env` или токен из существующего `secrets.h`):
 
 ```powershell
-python tools/prepare_esp_secrets.py
+cd backend
+go run ./cmd/tektool prepare-esp-secrets --device-id esp32-01 --rotate
+cd ..irmware
 pio run -e esp32dev_jsy_hc -t upload
 ```
 
@@ -545,15 +551,41 @@ curl -X POST "https://192.168.1.100/api/v1/sensors/1/rotate-token" `
 
 ## Проверка без ESP
 
+Все утилиты собраны в один CLI `tektool` (`backend/cmd/tektool`). Он уже лежит в Docker-образе backend, поэтому проще всего запускать его внутри контейнера — переменные окружения и сеть там уже настроены:
+
 ```powershell
-# Тестовый датчик в БД (dev)
-python tools/seed_test_sensor.py
+# Тестовый цех/площадка/датчик TEST-ESP-001 (идемпотентно, выводит api_token)
+docker compose exec backend /app/tektool seed-test-sensor
 
-# Эмулятор HTTP-телеметрии
-python tools/esp_simulator.py --token <api_token> --url http://localhost:8000/api/v1/ingest
+# Эмулятор HTTP-телеметрии ESP (каждые 5 с)
+docker compose exec backend /app/tektool esp-sim --token <api_token>
 
-# MQTT-эмулятор (если включён профиль mqtt)
-python tools/mqtt_simulator.py --device-id ESP-001 --host localhost
+# Демо-цеха/площадки/датчики + 24 ч демо-показаний; проверка демо-данных
+docker compose exec backend /app/tektool seed-demo
+docker compose exec backend /app/tektool verify-demo
+
+# Быстрый smoke-тест API (пользователи, роли, цвета, аудит)
+docker compose exec backend /app/tektool smoke
+```
+
+На хосте (нужен Go 1.27+) те же команды: `cd backend` → `go run ./cmd/tektool <команда> [флаги]` (по умолчанию API `http://localhost:8000`, логин/пароль admin — из `.env`; `DATABASE_URL` с хостом `timescaledb` автоматически заменяется на `localhost`). Список команд: `go run ./cmd/tektool`.
+
+| Команда | Назначение |
+|---------|------------|
+| `esp-sim` | HTTP-эмулятор ESP: `--token`, `--url`, `--interval`, `--count` |
+| `mqtt-sim` | MQTT-эмулятор с LWT: `--device-id`, `--host`, `--port`, `--simulate`, `--current`, `--power` |
+| `seed-test-sensor` / `repair-test-sensor` | тестовый датчик TEST-ESP-001 напрямую в БД / восстановление его привязки |
+| `seed-demo` / `verify-demo` | демо-данные через API / проверка демо-показаний |
+| `smoke` | smoke-тест API |
+| `prepare-esp-secrets` | генерация `firmware/src/secrets.h` |
+| `ble-provision` | BLE-привязка ESP с ПК (`--ssid`, `--wifi-password`, `--device-id`, `--rotate` или `--token`); только на хосте |
+| `gen-secrets` | сильные `JWT_SECRET` / пароли для `.env` |
+
+MQTT-эмулятор (профиль `mqtt`, см. выше про `passwd`):
+
+```powershell
+cd backend
+go run ./cmd/tektool mqtt-sim --device-id ESP-001 --host localhost --username tek --password <пароль> --simulate
 ```
 
 ---
@@ -569,6 +601,7 @@ python tools/mqtt_simulator.py --device-id ESP-001 --host localhost
 | Регистрация | Выключена в prod; пользователи через admin |
 | Rate limits | login, register, verify, ingest |
 | Логи | Без OTP, токенов, паролей, api_id SMS |
+| Контейнер backend | Статический Go-бинарник на alpine, непривилегированный пользователь |
 | MQTT | `allow_anonymous false`; порт не на хост в prod |
 | Postgres | Порт не пробрасывается наружу в prod-compose |
 
@@ -579,8 +612,16 @@ At-rest шифрование PostgreSQL **не используется** — th
 ## Тестирование
 
 ```powershell
-# Backend (в docker, с монтированием tests)
-docker compose run --rm --no-deps backend sh -c "pip install -q pytest pytest-asyncio httpx && python -m pytest tests/ -q"
+# Backend: unit-тесты (без БД)
+cd backend
+go test ./...
+
+# Backend: интеграционные тесты (реальная TimescaleDB из docker compose; БД tek_sensor_test
+# создаётся заново при каждом прогоне, рабочая БД не затрагивается)
+docker compose up -d timescaledb
+$env:TEST_DATABASE_URL = "postgresql://tek:<POSTGRES_PASSWORD>@localhost:5432/tek_sensor_test"
+go test -tags integration -count=1 ./internal/apitest/...
+cd ..
 
 # Flutter widget-тест (баннеры дашборда)
 cd frontend
@@ -611,7 +652,7 @@ flutter test test/dashboard_alerts_bar_test.dart
 | BLE не находит ESP | ESP прошит `esp32dev_jsy`, Bluetooth включён, расстояние < 5 м |
 | BLE в браузере | Недоступен by design — desktop или Android |
 | `401` при login | Пароли из `.env` (bootstrap sync); в prod не `admin/admin` |
-| WebSocket не обновляет графики | Проверьте WSS, JWT не истёк, `WEB_CONCURRENCY=1` |
+| WebSocket не обновляет графики | Проверьте WSS и что JWT не истёк |
 | Регистрация 404 в prod | Ожидаемо — создавайте пользователей через admin |
 
 ---
@@ -619,13 +660,12 @@ flutter test test/dashboard_alerts_bar_test.dart
 ## Структура репозитория
 
 ```
-├── backend/           FastAPI, Alembic, pytest
+├── backend/           Go: API + воркеры (cmd/server), CLI tektool (cmd/tektool), миграции, тесты
 ├── frontend/          Flutter (Web + desktop + Android)
 ├── firmware/          ESP32 PlatformIO
 ├── infra/             nginx, mosquitto, TLS
 ├── scripts/           build-prod, generate-mkcert
-├── tools/             эмуляторы, prepare_esp_secrets
 ├── docs/              интеграция устройств, production
 ├── docker-compose.yml       dev
-└── docker-compose.prod.yml  prod (nginx + gunicorn)
+└── docker-compose.prod.yml  prod (nginx + Go backend)
 ```

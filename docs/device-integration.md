@@ -107,16 +107,17 @@ http://<LAN-IP>/api/v1/ingest
 Для локальной разработки без реального датчика:
 
 ```bash
-# из корня репозитория, при запущенной БД
-python tools/seed_test_sensor.py
+# при запущенном стеке docker compose
+docker compose exec backend /app/tektool seed-test-sensor
 ```
 
-Скрипт создаёт тестовую площадку, цех и датчик, выводит `device_id` и `api_token`. Повторный запуск идемпотентен — выводит существующие значения.
+Команда создаёт тестовый цех, площадку и датчик, выводит `device_id` и `api_token`. Повторный запуск идемпотентен — выводит существующие значения.
 
 Эмулятор ESP:
 
 ```bash
-python tools/esp_simulator.py --token <api_token> --url http://192.168.1.100:8000/api/v1/ingest
+docker compose exec backend /app/tektool esp-sim --token <api_token>
+# или с хоста (Go 1.27+): cd backend && go run ./cmd/tektool esp-sim --token <api_token> --url http://192.168.1.100:8000/api/v1/ingest
 ```
 
 ## Коды ответов
@@ -125,7 +126,7 @@ python tools/esp_simulator.py --token <api_token> --url http://192.168.1.100:800
 |-----|----------|
 | `202` | Замеры приняты и записаны |
 | `401` | Неверный или отсутствующий `X-Device-Token` |
-| `422` | Невалидное тело запроса (ошибка валидации JSON) |
+| `422` | Невалидное тело запроса (ошибка валидации JSON; формат `{"detail": [{"type", "loc", "msg", ...}]}`) |
 | `429` | Превышен rate limit на ingest |
 
 ---
@@ -179,39 +180,28 @@ docker compose -f docker-compose.prod.yml --profile mqtt up -d mosquitto
 {"status": "online"}
 ```
 
-### Пример (Python / paho-mqtt)
+### Пример (Go / paho.mqtt.golang)
 
-```python
-import json
-import paho.mqtt.client as mqtt
-
-device_id = "ESP-001"
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-client.will_set(
-    f"sensors/{device_id}/status",
-    json.dumps({"status": "offline"}),
-    qos=1,
-    retain=True,
-)
-client.connect("192.168.1.100", 1883)
-client.loop_start()
-client.publish(
-    f"sensors/{device_id}/status",
-    json.dumps({"status": "online"}),
-    qos=1,
-    retain=True,
-)
-client.publish(
-    f"sensors/{device_id}/telemetry",
-    json.dumps({"current_a": 0.0, "power_w": 0.0}),
-)
+```go
+deviceID := "ESP-001"
+opts := mqtt.NewClientOptions().
+	AddBroker("tcp://192.168.1.100:1883").
+	SetClientID("sim-" + deviceID).
+	SetUsername("tek").SetPassword("<пароль>").
+	SetWill("sensors/"+deviceID+"/status", `{"status": "offline"}`, 1, true)
+client := mqtt.NewClient(opts)
+client.Connect().Wait()
+client.Publish("sensors/"+deviceID+"/status", 1, true, `{"status": "online"}`).Wait()
+client.Publish("sensors/"+deviceID+"/telemetry", 0, false, `{"current_a": 0.0, "power_w": 0.0}`).Wait()
 ```
+
+Полная реализация — `backend/cmd/tektool/simulators.go` (команда `mqtt-sim`).
 
 ### Эмулятор
 
 ```powershell
-pip install paho-mqtt
-python tools/mqtt_simulator.py --device-id ESP-001 --host localhost --current 0 --power 0
+cd backend
+go run ./cmd/tektool mqtt-sim --device-id ESP-001 --host localhost --username tek --password <пароль> --current 0 --power 0
 ```
 
 ### JSY-MK-194G без напряжения

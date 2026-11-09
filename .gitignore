@@ -1,8 +1,4 @@
 .env
-*.pyc
-__pycache__/
-.venv/
-venv/
 .dart_tool/
 frontend/build/
 *.iml
@@ -40,3 +36,12 @@ Thumbs.db
 # coverage
 coverage/
 *.lcov
+
+# Go build output
+/backend/server
+/backend/tektool
+*.exe
+*.test
+
+# Mosquitto credentials (mosquitto_passwd)
+infra/mosquitto/passwd
